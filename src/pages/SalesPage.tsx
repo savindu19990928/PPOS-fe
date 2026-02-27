@@ -23,7 +23,6 @@ export function SalesPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Bill preview state
   const [isBillOpen, setIsBillOpen] = useState(false);
   const [isLoadingBill, setIsLoadingBill] = useState(false);
   const [billData, setBillData] = useState<{
@@ -169,19 +168,21 @@ export function SalesPage() {
       }}
       disabled={isLoadingBill}>
 
-          <EyeIcon className="h-4 w-4 mr-1" />
-          View Bill
+          <EyeIcon className="h-4 w-4 sm:mr-1" />
+          <span className="hidden sm:inline">View Bill</span>
         </Button>,
 
-    className: 'text-right w-32'
+    className: 'text-right w-24 sm:w-32'
   }];
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Sales History</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+              Sales History
+            </h1>
             <p className="text-sm text-slate-500 mt-1">
               {totalCount} sales total
             </p>
@@ -199,7 +200,7 @@ export function SalesPage() {
           </Button>
         </div>
 
-        <div className="relative max-w-md">
+        <div className="relative w-full sm:max-w-md">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -220,22 +221,24 @@ export function SalesPage() {
 
         <Card className="overflow-hidden">
           {isLoading ?
-          <div className="p-16 flex flex-col items-center justify-center">
+          <div className="p-12 sm:p-16 flex flex-col items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
               <p className="text-sm text-slate-400 mt-3">Loading sales...</p>
             </div> :
 
           <>
-              <Table
-              data={sales}
-              columns={columns}
-              keyField="id"
-              emptyMessage={
-              searchQuery ?
-              `No sales found for "${searchQuery}"` :
-              'No sales records found.'
-              } />
+              <div className="overflow-x-auto">
+                <Table
+                data={sales}
+                columns={columns}
+                keyField="id"
+                emptyMessage={
+                searchQuery ?
+                `No sales found for "${searchQuery}"` :
+                'No sales records found.'
+                } />
 
+              </div>
               <div className="border-t border-slate-200">
                 <Pagination
                 currentPage={currentPage}

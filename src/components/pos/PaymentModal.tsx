@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -25,6 +25,7 @@ export function PaymentModal({
   const [customerName, setCustomerName] = useState('');
   const [mobile, setMobile] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (isOpen) {
       setAmountPaid('');
@@ -40,9 +41,50 @@ export function PaymentModal({
   const change = effectiveAmountPaid - total;
   const isValid =
   paymentMethod === 'CARD' ? true : parseFloat(amountPaid || '0') >= total;
+  // Keyboard shortcuts for payment modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // PageUp → Cash
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        setPaymentMethod('CASH');
+        return;
+      }
+      // PageDown → Card
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        setPaymentMethod('CARD');
+        return;
+      }
+      // Enter → Complete sale (when not in a text input that needs Enter for other purposes)
+      // We let the form's native submit handle Enter in input fields,
+      // but also handle it globally for when focus is elsewhere
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement;
+        const tagName = target.tagName.toLowerCase();
+        // If focus is on a button (like denomination buttons), don't double-fire
+        if (tagName === 'button') return;
+        // For inputs, the form onSubmit will handle it naturally
+        // But if focus is on the modal backdrop or other non-form elements, trigger submit
+        if (
+        tagName !== 'input' &&
+        tagName !== 'textarea' &&
+        tagName !== 'select')
+        {
+          e.preventDefault();
+          if (isValid && !isProcessing) {
+            formRef.current?.requestSubmit();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isValid, isProcessing]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isValid || isProcessing) return;
     setIsProcessing(true);
     try {
       await onProcessPayment(
@@ -59,7 +101,7 @@ export function PaymentModal({
   const denominations = [100, 500, 1000, 5000];
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Complete Payment" size="lg">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2 bg-slate-50 p-4 rounded-lg border border-slate-200 text-center">
             <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">
@@ -78,18 +120,28 @@ export function PaymentModal({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CASH')}
-                className={`flex items-center justify-center p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CASH' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
+                className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CASH' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
 
-                <BanknoteIcon className="h-6 w-6 mr-2" />
-                <span className="font-semibold">Cash</span>
+                <div className="flex items-center">
+                  <BanknoteIcon className="h-6 w-6 mr-2" />
+                  <span className="font-semibold">Cash</span>
+                </div>
+                <kbd className="mt-1.5 px-1.5 py-0.5 bg-white/80 text-[10px] font-mono text-slate-400 rounded border border-slate-200">
+                  PgUp
+                </kbd>
               </button>
               <button
                 type="button"
                 onClick={() => setPaymentMethod('CARD')}
-                className={`flex items-center justify-center p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CARD' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
+                className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${paymentMethod === 'CARD' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
 
-                <CreditCardIcon className="h-6 w-6 mr-2" />
-                <span className="font-semibold">Card</span>
+                <div className="flex items-center">
+                  <CreditCardIcon className="h-6 w-6 mr-2" />
+                  <span className="font-semibold">Card</span>
+                </div>
+                <kbd className="mt-1.5 px-1.5 py-0.5 bg-white/80 text-[10px] font-mono text-slate-400 rounded border border-slate-200">
+                  PgDn
+                </kbd>
               </button>
             </div>
           </div>
@@ -108,7 +160,7 @@ export function PaymentModal({
                 autoFocus
                 required />
 
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {denominations.map((denom) =>
                 <button
                   key={denom}
@@ -180,23 +232,45 @@ export function PaymentModal({
           </div>
         </div>
 
-        <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={isProcessing}>
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div className="hidden sm:flex items-center gap-3 text-[10px] font-mono text-slate-400">
+            <span>
+              <kbd className="px-1 py-0.5 bg-slate-100 rounded border border-slate-200 text-slate-500">
+                PgUp
+              </kbd>{' '}
+              Cash
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 bg-slate-100 rounded border border-slate-200 text-slate-500">
+                PgDn
+              </kbd>{' '}
+              Card
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 bg-slate-100 rounded border border-slate-200 text-slate-500">
+                Enter
+              </kbd>{' '}
+              Complete
+            </span>
+          </div>
+          <div className="flex space-x-3 ml-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              disabled={isProcessing}>
 
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={!isValid || isProcessing}
-            isLoading={isProcessing}
-            className="w-32">
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!isValid || isProcessing}
+              isLoading={isProcessing}
+              className="w-32">
 
-            Complete
-          </Button>
+              Complete
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>);

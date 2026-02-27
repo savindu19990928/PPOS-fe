@@ -22,7 +22,6 @@ export function RegisterPage() {
   const [selectedRegister, setSelectedRegister] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  // Transaction Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [transType, setTransType] = useState<'CASH_IN' | 'CASH_OUT'>('CASH_IN');
   const [amount, setAmount] = useState('');
@@ -132,10 +131,10 @@ export function RegisterPage() {
     <Layout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
             Cash Register Management
           </h1>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <Button
               variant="outline"
               size="sm"
@@ -149,30 +148,32 @@ export function RegisterPage() {
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => {
                 setTransType('CASH_IN');
                 setIsModalOpen(true);
               }}
               className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
 
-              <ArrowDownIcon className="h-4 w-4 mr-2" />
-              Cash In
+              <ArrowDownIcon className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Cash </span>In
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => {
                 setTransType('CASH_OUT');
                 setIsModalOpen(true);
               }}
               className="text-red-600 border-red-200 hover:bg-red-50">
 
-              <ArrowUpIcon className="h-4 w-4 mr-2" />
-              Cash Out
+              <ArrowUpIcon className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Cash </span>Out
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {registers.map((reg) =>
           <Card
             key={reg.id}
@@ -188,7 +189,7 @@ export function RegisterPage() {
                   </span>
                 </div>
                 <p className="text-sm text-slate-500">Current Balance</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
+                <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
                   {parseFloat(reg.current_balance).toFixed(2)}
                 </p>
               </div>
@@ -198,7 +199,7 @@ export function RegisterPage() {
 
         <Card title="Transaction History">
           {isLoading ?
-          <div className="p-16 flex flex-col items-center justify-center">
+          <div className="p-12 sm:p-16 flex flex-col items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
               <p className="text-sm text-slate-400 mt-3">
                 Loading transactions...
@@ -206,7 +207,9 @@ export function RegisterPage() {
             </div> :
 
           <>
-              <Table data={transactions} columns={columns} keyField="id" />
+              <div className="overflow-x-auto">
+                <Table data={transactions} columns={columns} keyField="id" />
+              </div>
               <div className="border-t border-slate-200">
                 <Pagination
                 currentPage={currentPage}

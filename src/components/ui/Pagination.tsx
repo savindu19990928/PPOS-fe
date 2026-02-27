@@ -43,18 +43,18 @@ export function Pagination({
   const visiblePages = getVisiblePages();
   return (
     <div className="flex items-center justify-between px-2 py-3">
-      <p className="text-sm text-slate-500">
+      <p className="hidden sm:block text-sm text-slate-500">
         Showing page{' '}
         <span className="font-medium text-slate-700">{currentPage}</span> of{' '}
         <span className="font-medium text-slate-700">{totalPages}</span>
         <span className="ml-1 text-slate-400">({totalCount} total)</span>
       </p>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 w-full sm:w-auto justify-center sm:justify-end">
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1 sm:p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           title="First page">
 
           <ChevronsLeftIcon className="h-4 w-4" />
@@ -62,7 +62,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1 sm:p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           title="Previous page">
 
           <ChevronLeftIcon className="h-4 w-4" />
@@ -70,14 +70,17 @@ export function Pagination({
 
         {visiblePages.map((page, idx) =>
         page === '...' ?
-        <span key={`dots-${idx}`} className="px-2 text-slate-400 text-sm">
+        <span
+          key={`dots-${idx}`}
+          className="px-1 sm:px-2 text-slate-400 text-sm">
+
               …
             </span> :
 
         <button
           key={page}
           onClick={() => onPageChange(page)}
-          className={`min-w-[36px] h-9 px-2 rounded-md text-sm font-medium transition-colors ${page === currentPage ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
+          className={`min-w-[32px] sm:min-w-[36px] h-8 sm:h-9 px-1.5 sm:px-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${page === currentPage ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
 
               {page}
             </button>
@@ -87,7 +90,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1 sm:p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           title="Next page">
 
           <ChevronRightIcon className="h-4 w-4" />
@@ -95,7 +98,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1 sm:p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           title="Last page">
 
           <ChevronsRightIcon className="h-4 w-4" />
