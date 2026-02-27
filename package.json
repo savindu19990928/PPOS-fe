@@ -1,20 +1,27 @@
 {
-  "name": "magic-patterns-vite-template",
+  "name": "mediflex-pos",
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "preview": "vite preview --port 8080 --host"
+    "preview": "vite preview --port 8080 --host",
+    "electron:start": "electron .",
+    "electron:build": "tsc -p electron",
+    "electron:dev": "concurrently \"vite --port 3000\" \"wait-on http://localhost:3000 && npm run electron:start\"",
+    "electron:dist": "npm run build && npm run electron:build && electron-builder"
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
+    "express": "^5.2.1",
+    "framer-motion": "^11.5.4",
     "lucide-react": "0.522.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2",
+    "react-router-dom": "^7.13.1",
     "react-to-print": "^3.0.4"
   },
   "devDependencies": {
@@ -25,12 +32,35 @@
     "@typescript-eslint/parser": "^5.54.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "latest",
+    "concurrently": "^9.2.1",
+    "electron": "^40.2.1",
+    "electron-builder": "^26.7.0",
     "eslint": "^8.50.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.1",
     "postcss": "latest",
     "tailwindcss": "3.4.17",
     "typescript": "^5.5.4",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.mediflex.pos",
+    "productName": "Mediflex POS System",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "icon": "electron/assets/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "public/**/*"
+    ],
+    "asar": true
   }
 }
