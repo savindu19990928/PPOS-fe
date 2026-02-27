@@ -20,8 +20,6 @@ function createWindow() {
         const indexPath = path.join(app.getAppPath(), "dist", "index.html");
         mainWindow.loadFile(indexPath);
     }
-    // TEMP: enable to debug blank screen
-    mainWindow.webContents.openDevTools();
 }
 app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
