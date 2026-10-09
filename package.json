@@ -2,7 +2,6 @@
   "name": "mediflex-pos",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite --port 3000",
@@ -12,7 +11,10 @@
     "electron:start": "electron .",
     "electron:build": "tsc -p electron",
     "electron:dev": "concurrently \"vite --port 3000\" \"wait-on http://localhost:3000 && npm run electron:start\"",
-    "electron:dist": "npm run build && npm run electron:build && electron-builder"
+    "electron:dist": "npm run build && npm run electron:build && electron-builder --win",
+    "electron:dist:all": "npm run build && npm run electron:build && electron-builder --win --x64 --ia32",
+    "electron:dist:x64": "npm run build && npm run electron:build && electron-builder --win --x64",
+    "electron:dist:ia32": "npm run build && npm run electron:build && electron-builder --win --ia32"
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
@@ -33,7 +35,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "latest",
     "concurrently": "^9.2.1",
-    "electron": "^40.2.1",
+    "electron": "22.3.27",
     "electron-builder": "^26.7.0",
     "eslint": "^8.50.0",
     "eslint-plugin-react-hooks": "^4.6.0",
@@ -47,19 +49,33 @@
   "build": {
     "appId": "com.mediflex.pos",
     "productName": "Mediflex POS System",
+    "electronVersion": "22.3.27",
     "directories": {
       "output": "release"
     },
     "win": {
       "icon": "electron/assets/icon.ico",
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mediflex POS System",
+      "perMachine": true
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
-      "public/**/*"
+      "dist-electron/**/*"
     ],
     "asar": true
   }
