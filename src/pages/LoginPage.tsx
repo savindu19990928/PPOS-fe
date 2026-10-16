@@ -21,7 +21,7 @@ export function LoginPage() {
         username,
         password
       });
-      login(response.access, username);
+      login(response, username);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Invalid credentials');

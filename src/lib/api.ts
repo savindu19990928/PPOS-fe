@@ -1,16 +1,58 @@
+import {
+  Sale,
+  SaleFilterParams,
+  CancelSalePayload,
+  CancelSaleResponse,
+  ReprintSalePayload,
+  PaginatedResponse,
+  Product,
+  UnitOfMeasure,
+  Denomination,
+  LoginResponse,
+  User,
+  StockMovement,
+  StockMovementFilterParams,
+  CreateStockMovementPayload,
+  BulkCreateStockMovementsPayload,
+  StockMovementSummary,
+  CustomerCreditProfile,
+  CreditProfileFilterParams,
+  CollectPaymentPayload,
+  CollectPaymentResponse,
+  CreateCreditProfilePayload,
+  BulkCreateStockMovementsResponse
+} from '../types';
+
 const BASE_URL = 'https://ppos-813344430767.asia-southeast1.run.app';
 
 export const api = {
   getToken: () => localStorage.getItem('access_token'),
   setToken: (token: string) => localStorage.setItem('access_token', token),
-  removeToken: () => localStorage.removeItem('access_token'),
+  getRefreshToken: () => localStorage.getItem('refresh_token'),
+  setRefreshToken: (token: string) => localStorage.setItem('refresh_token', token),
+  getStoredUser: (): User | null => {
+    try {
+      const data = localStorage.getItem('auth_user');
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+  setStoredUser: (user: User) =>
+    localStorage.setItem('auth_user', JSON.stringify(user)),
+  removeToken: () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('username');
+  },
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers
+      ...(options.headers as Record<string, string> | undefined)
     };
 
     const response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -19,84 +61,284 @@ export const api = {
     });
 
     if (!response.ok) {
-      const error = await response.
-        json().
-        catch(() => ({ detail: 'An error occurred' }));
-      throw new Error(error.detail || `Error ${response.status}`);
+      let errorMessage = `Error ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.non_field_errors) {
+          errorMessage = Array.isArray(errorData.non_field_errors)
+            ? errorData.non_field_errors.join(', ')
+            : String(errorData.non_field_errors);
+        } else {
+          // Flatten field errors if any
+          const firstKey = Object.keys(errorData)[0];
+          if (firstKey) {
+            const val = errorData[firstKey];
+            errorMessage = `${firstKey}: ${Array.isArray(val) ? val.join(' ') : val}`;
+          }
+        }
+      } catch {
+        // Fallback to HTTP status text
+        errorMessage = response.statusText || `Error ${response.status}`;
+      }
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    // For 204 No Content
+    if (response.status === 204) {
+      return {} as T;
     }
 
     return response.json();
   },
 
   // Auth
-  login: (credentials: any) =>
-    api.request<any>('/api/auth/login/', {
+  login: (credentials: { username: string; password: string }): Promise<LoginResponse> =>
+    api.request<LoginResponse>('/api/auth/login/', {
       method: 'POST',
       body: JSON.stringify(credentials)
     }),
 
+  getMe: (): Promise<User> => api.request<User>('/api/auth/me/'),
+
+  refreshToken: (refresh: string): Promise<{ access: string }> =>
+    api.request<{ access: string }>('/api/auth/refresh/', {
+      method: 'POST',
+      body: JSON.stringify({ refresh })
+    }),
+
   // Products
-  getProducts: (search?: string) => {
+  getProducts: async (search?: string): Promise<Product[]> => {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return api.request<any>(`/api/products/${query}`);
+    const res = await api.request<any>(`/api/products/${query}`);
+    return Array.isArray(res) ? res : res.results || [];
   },
-  getProductsPaginated: (page: number = 1, search?: string) => {
+  getProductsPaginated: (page = 1, search?: string) => {
     const params = new URLSearchParams();
     params.set('page', String(page));
     if (search) params.set('search', search);
-    return api.request<any>(`/api/products/?${params.toString()}`);
+    return api.request<PaginatedResponse<Product>>(`/api/products/?${params.toString()}`);
   },
   getProductByBarcode: (barcode: string) =>
-    api.request<any[]>(`/api/products/?barcode=${barcode}`),
-  getProductDetails: (id: number) => api.request<any>(`/api/products/${id}/`),
+    api.request<Product[]>(`/api/products/?barcode=${encodeURIComponent(barcode)}`),
+  getProductDetails: (id: number) => api.request<Product>(`/api/products/${id}/`),
 
-  // Sales
-  createSale: (data: any) =>
-    api.request<any>('/api/sales/', {
+  // Sales (Cashier & Admin: createSale. Admin only: getSales, getSaleDetails, cancelSale, reprintSale, correctSale)
+  createSale: (data: any): Promise<Sale> =>
+    api.request<Sale>('/api/sales/', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
-  getSales: (page: number = 1, search?: string) => {
+
+  getSales: (
+    filterOrPage: SaleFilterParams | number = 1,
+    legacySearch?: string
+  ): Promise<PaginatedResponse<Sale>> => {
+    const params = new URLSearchParams();
+
+    if (typeof filterOrPage === 'number') {
+      params.set('page', String(filterOrPage));
+      if (legacySearch) params.set('search', legacySearch);
+    } else {
+      const filters = filterOrPage;
+      if (filters.page) params.set('page', String(filters.page));
+      if (filters.search) params.set('search', filters.search);
+      if (filters.date) params.set('date', filters.date);
+      if (filters.date_from) params.set('date_from', filters.date_from);
+      if (filters.date_to) params.set('date_to', filters.date_to);
+      if (filters.payment_method) params.set('payment_method', filters.payment_method);
+      if (filters.status) params.set('status', filters.status);
+      if (filters.customer_name) params.set('customer_name', filters.customer_name);
+      if (filters.mobile_number) params.set('mobile_number', filters.mobile_number);
+      if (filters.bill_id) params.set('bill_id', filters.bill_id);
+      if (filters.ordering) params.set('ordering', filters.ordering);
+    }
+
+    return api.request<PaginatedResponse<Sale>>(`/api/sales/?${params.toString()}`);
+  },
+
+  getTodaySales: (page = 1): Promise<PaginatedResponse<Sale>> => {
     const params = new URLSearchParams();
     params.set('page', String(page));
-    if (search) params.set('search', search);
-    return api.request<any>(`/api/sales/?${params.toString()}`);
+    return api.request<PaginatedResponse<Sale>>(`/api/sales/today/?${params.toString()}`);
   },
-  getTodaySales: (page: number = 1) => {
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    return api.request<any>(`/api/sales/today/?${params.toString()}`);
-  },
-  getSaleDetails: (id: number) => api.request<any>(`/api/sales/${id}/`),
-  correctSale: (id: number, data: any) =>
+
+  getSaleDetails: (id: number): Promise<Sale> => api.request<Sale>(`/api/sales/${id}/`),
+
+  cancelSale: (id: number, data?: CancelSalePayload): Promise<CancelSaleResponse> =>
+    api.request<CancelSaleResponse>(`/api/sales/${id}/cancel/`, {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    }),
+
+  reprintSale: (id: number, data?: ReprintSalePayload): Promise<Sale> =>
+    api.request<Sale>(`/api/sales/${id}/reprint/`, {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    }),
+
+  correctSale: (id: number, data: any): Promise<any> =>
     api.request<any>(`/api/sales/${id}/correct_sale/`, {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
-  // Registers
-  getRegisters: () => api.request<any[]>('/api/cash-registers/'),
-  getRegisterDetails: (id: number) =>
-    api.request<any>(`/api/cash-registers/${id}/`),
-  getRegisterTransactions: (id: number, page: number = 1) => {
+  // Stock Movements (Admin Only)
+  getStockMovements: (
+    filterOrPage: StockMovementFilterParams | number = 1
+  ): Promise<PaginatedResponse<StockMovement>> => {
     const params = new URLSearchParams();
-    params.set('page', String(page));
-    return api.request<any>(
-      `/api/cash-registers/${id}/transactions/?${params.toString()}`
-    );
+    if (typeof filterOrPage === 'number') {
+      params.set('page', String(filterOrPage));
+    } else {
+      const f = filterOrPage;
+      if (f.page) params.set('page', String(f.page));
+      if (f.product) params.set('product', String(f.product));
+      if (f.barcode) params.set('barcode', f.barcode);
+      if (f.movement_type) params.set('movement_type', f.movement_type);
+      if (f.date_from) params.set('date_from', f.date_from);
+      if (f.date_to) params.set('date_to', f.date_to);
+      if (f.search) params.set('search', f.search);
+      if (f.ordering) params.set('ordering', f.ordering);
+    }
+    return api.request<PaginatedResponse<StockMovement>>(`/api/stock-movements/?${params.toString()}`);
   },
 
-  // Cash Transactions
-  getCashTransactions: () => api.request<any[]>('/api/cash-transactions/'),
-  createCashTransaction: (data: any) =>
-    api.request<any>('/api/cash-transactions/', {
+  getStockMovementDetails: (id: number): Promise<StockMovement> =>
+    api.request<StockMovement>(`/api/stock-movements/${id}/`),
+
+  createStockMovement: (data: CreateStockMovementPayload): Promise<StockMovement> =>
+    api.request<StockMovement>('/api/stock-movements/', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
+  updateStockMovement: (
+    id: number,
+    data: { reference_number?: string; notes?: string }
+  ): Promise<StockMovement> =>
+    api.request<StockMovement>(`/api/stock-movements/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
+
+  deleteStockMovement: (id: number): Promise<void> =>
+    api.request<void>(`/api/stock-movements/${id}/`, {
+      method: 'DELETE'
+    }),
+
+  bulkCreateStockMovements: (
+    data: BulkCreateStockMovementsPayload
+  ): Promise<BulkCreateStockMovementsResponse> =>
+    api.request<BulkCreateStockMovementsResponse>('/api/stock-movements/bulk-create/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  getStockMovementsSummary: (params?: {
+    date_from?: string;
+    date_to?: string;
+    product?: number;
+  }): Promise<StockMovementSummary> => {
+    const q = new URLSearchParams();
+    if (params?.date_from) q.set('date_from', params.date_from);
+    if (params?.date_to) q.set('date_to', params.date_to);
+    if (params?.product) q.set('product', String(params.product));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<StockMovementSummary>(`/api/stock-movements/summary/${qs}`);
+  },
+
+  getProductStockMovements: (
+    productId: number,
+    params?: { movement_type?: string; date_from?: string; date_to?: string; page?: number }
+  ): Promise<PaginatedResponse<StockMovement>> => {
+    const q = new URLSearchParams();
+    if (params?.movement_type) q.set('movement_type', params.movement_type);
+    if (params?.date_from) q.set('date_from', params.date_from);
+    if (params?.date_to) q.set('date_to', params.date_to);
+    if (params?.page) q.set('page', String(params.page));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<PaginatedResponse<StockMovement>>(`/api/products/${productId}/stock-movements/${qs}`);
+  },
+
   // Units of Measure
-  getUnits: () => api.request<any[]>('/api/units/'),
+  getUnits: (): Promise<UnitOfMeasure[]> => api.request<UnitOfMeasure[]>('/api/units/'),
 
   // Denominations
-  getDenominations: () => api.request<any[]>('/api/denominations/')
+  getDenominations: (): Promise<Denomination[]> => api.request<Denomination[]>('/api/denominations/'),
+
+  // Customer Credit Profiles & Debt Tracking (Cashier & Admin)
+  getCreditProfiles: (
+    params?: CreditProfileFilterParams | number
+  ): Promise<PaginatedResponse<CustomerCreditProfile> | CustomerCreditProfile[]> => {
+    const q = new URLSearchParams();
+    if (typeof params === 'number') {
+      q.set('page', String(params));
+    } else if (params) {
+      if (params.page) q.set('page', String(params.page));
+      if (params.mobile_number) q.set('mobile_number', params.mobile_number);
+      if (params.customer_name) q.set('customer_name', params.customer_name);
+      if (params.search) q.set('search', params.search);
+      if (params.has_due !== undefined && params.has_due !== '') q.set('has_due', String(params.has_due));
+      if (params.is_banned !== undefined && params.is_banned !== '') q.set('is_banned', String(params.is_banned));
+      if (params.ordering) q.set('ordering', params.ordering);
+    }
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<PaginatedResponse<CustomerCreditProfile> | CustomerCreditProfile[]>(`/api/credit-profiles/${qs}`);
+  },
+
+  getCreditProfileDetails: (id: number): Promise<CustomerCreditProfile> =>
+    api.request<CustomerCreditProfile>(`/api/credit-profiles/${id}/`),
+
+  collectCreditPayment: (
+    id: number,
+    data: CollectPaymentPayload
+  ): Promise<CollectPaymentResponse> =>
+    api.request<CollectPaymentResponse>(`/api/credit-profiles/${id}/collect-payment/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  banCreditCustomer: (
+    id: number,
+    reason?: string
+  ): Promise<{ message: string; is_banned: boolean; ban_reason: string }> =>
+    api.request<{ message: string; is_banned: boolean; ban_reason: string }>(`/api/credit-profiles/${id}/ban/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || '' })
+    }),
+
+  unbanCreditCustomer: (
+    id: number
+  ): Promise<{ message: string; is_banned: boolean; ban_reason: string }> =>
+    api.request<{ message: string; is_banned: boolean; ban_reason: string }>(`/api/credit-profiles/${id}/unban/`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    }),
+
+  createCreditProfile: (data: CreateCreditProfilePayload): Promise<CustomerCreditProfile> =>
+    api.request<CustomerCreditProfile>('/api/credit-profiles/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  updateCreditProfile: (id: number, data: Partial<CreateCreditProfilePayload>): Promise<CustomerCreditProfile> =>
+    api.request<CustomerCreditProfile>(`/api/credit-profiles/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
+
+  deleteCreditProfile: (id: number): Promise<void> =>
+    api.request<void>(`/api/credit-profiles/${id}/`, {
+      method: 'DELETE'
+    })
 };

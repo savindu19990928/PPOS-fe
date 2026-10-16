@@ -3,20 +3,35 @@ import {
   HashRouter as Router,
   Routes,
   Route,
-  Navigate } from
-'react-router-dom';
+  Navigate
+} from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { SalesPage } from './pages/SalesPage';
-import { RegisterPage } from './pages/RegisterPage';
-function ProtectedRoute({ children }: {children: React.ReactNode;}) {
+import { StockPage } from './pages/StockPage';
+import { CreditPage } from './pages/CreditPage';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
 }
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAdmin } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!isAdmin) {
+    // Cashiers are restricted from Sales history and Admin operations
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 export function App() {
   return (
     <AuthProvider>
@@ -26,29 +41,42 @@ export function App() {
           <Route
             path="/"
             element={
-            <ProtectedRoute>
+              <ProtectedRoute>
                 <ProductsPage />
               </ProtectedRoute>
-            } />
+            }
+          />
+
+          <Route
+            path="/credit"
+            element={
+              <ProtectedRoute>
+                <CreditPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/sales"
             element={
-            <ProtectedRoute>
+              <AdminRoute>
                 <SalesPage />
-              </ProtectedRoute>
-            } />
+              </AdminRoute>
+            }
+          />
 
           <Route
-            path="/registers"
+            path="/stock"
             element={
-            <ProtectedRoute>
-                <RegisterPage />
-              </ProtectedRoute>
-            } />
+              <AdminRoute>
+                <StockPage />
+              </AdminRoute>
+            }
+          />
 
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
-    </AuthProvider>);
-
+    </AuthProvider>
+  );
 }

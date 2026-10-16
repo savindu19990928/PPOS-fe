@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { SearchIcon, BarcodeIcon, Loader2 } from 'lucide-react';
-import { Input } from '../ui/Input';
 import { api } from '../../lib/api';
 import { Product } from '../../types';
 import { useDebounce } from '../../hooks/useDebounce'; // We need to create this hook

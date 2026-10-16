@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Layout } from '../components/Layout';
 import { Table } from '../components/ui/Table';
-import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Pagination } from '../components/ui/Pagination';
@@ -42,6 +41,7 @@ export function ProductsPage() {
   // Bill preview state
   const [isBillPreviewOpen, setIsBillPreviewOpen] = useState(false);
   const [billData, setBillData] = useState<{
+    saleId?: number | string;
     saleNumber: string;
     createdAt: string;
     createdBy: string;
@@ -295,9 +295,10 @@ export function ProductsPage() {
       );
       const responseChange = parseFloat(saleResponse.change || '0');
       setBillData({
+        saleId: saleResponse.id,
         saleNumber: saleResponse.sale_number,
         createdAt: saleResponse.created_at,
-        createdBy: user || saleResponse.created_by_name || 'Unknown',
+        createdBy: user?.first_name || user?.username || saleResponse.created_by_name || 'Cashier',
         customerName: customerName,
         paymentMethod: method,
         items: billItems,
@@ -312,7 +313,6 @@ export function ProductsPage() {
       handleRefresh();
     } catch (error) {
       console.error('Sale failed', error);
-      alert('Failed to process sale. Please try again.');
       throw error;
     }
   };
@@ -679,21 +679,23 @@ export function ProductsPage() {
         onProcessPayment={handleProcessPayment} />
 
 
-      {billData &&
-      <BillPreview
-        isOpen={isBillPreviewOpen}
-        onClose={() => setIsBillPreviewOpen(false)}
-        saleNumber={billData.saleNumber}
-        createdAt={billData.createdAt}
-        createdBy={billData.createdBy}
-        customerName={billData.customerName}
-        paymentMethod={billData.paymentMethod}
-        items={billData.items}
-        total={billData.total}
-        amountPaid={billData.amountPaid}
-        change={billData.change} />
-
-      }
+      {billData && (
+        <BillPreview
+          isOpen={isBillPreviewOpen}
+          onClose={() => setIsBillPreviewOpen(false)}
+          saleId={billData.saleId}
+          saleNumber={billData.saleNumber}
+          createdAt={billData.createdAt}
+          createdBy={billData.createdBy}
+          customerName={billData.customerName}
+          paymentMethod={billData.paymentMethod}
+          items={billData.items}
+          total={billData.total}
+          amountPaid={billData.amountPaid}
+          change={billData.change}
+          canPrint={true}
+        />
+      )}
     </Layout>);
 
 }

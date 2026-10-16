@@ -1,6 +1,8 @@
 {
   "name": "mediflex-pos",
   "version": "0.0.1",
+  "description": "Mediflex Pharmacy POS System",
+  "author": "Mediflex",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -12,6 +14,10 @@
     "electron:build": "tsc -p electron",
     "electron:dev": "concurrently \"vite --port 3000\" \"wait-on http://localhost:3000 && npm run electron:start\"",
     "electron:dist": "npm run build && npm run electron:build && electron-builder --win",
+    "electron:dist:msi": "npm run build && npm run electron:build && electron-builder --win msi",
+    "electron:dist:msi:x64": "npm run build && npm run electron:build && electron-builder --win msi --x64",
+    "electron:dist:msi:ia32": "npm run build && npm run electron:build && electron-builder --win msi --ia32",
+    "electron:dist:msi:all": "npm run build && npm run electron:build && electron-builder --win msi --x64 --ia32",
     "electron:dist:all": "npm run build && npm run electron:build && electron-builder --win --x64 --ia32",
     "electron:dist:x64": "npm run build && npm run electron:build && electron-builder --win --x64",
     "electron:dist:ia32": "npm run build && npm run electron:build && electron-builder --win --ia32"
@@ -57,6 +63,13 @@
       "icon": "electron/assets/icon.ico",
       "target": [
         {
+          "target": "msi",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
           "target": "nsis",
           "arch": [
             "x64",
@@ -64,6 +77,16 @@
           ]
         }
       ]
+    },
+    "msi": {
+      "oneClick": true,
+      "perMachine": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mediflex POS System",
+      "upgradeCode": "E5A3D73A-93B4-4B7C-A5D1-C968DA520842",
+      "warningsAsErrors": false
     },
     "nsis": {
       "oneClick": false,
