@@ -3,6 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
+  getAppVersion,
+  subscribeToUpdateStatus
+} from '../lib/updater';
+import { UpdateModal } from './common/UpdateModal';
+import {
   HistoryIcon,
   LogOutIcon,
   PillIcon,
@@ -11,7 +16,8 @@ import {
   BoxesIcon,
   UsersIcon,
   Building2Icon,
-  BellIcon
+  BellIcon,
+  DownloadCloudIcon
 } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -21,6 +27,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [alertCount, setAlertCount] = useState<number>(0);
+
+  // Auto-Update States
+  const [appVersion, setAppVersion] = useState<string>('0.0.1');
+  const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    getAppVersion().then((v) => setAppVersion(v));
+
+    const unsubscribe = subscribeToUpdateStatus((data) => {
+      if (data.status === 'available' || data.status === 'downloaded') {
+        setHasUpdateAvailable(true);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (isAdmin) {
@@ -139,6 +164,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
+          {/* System Version & Update Button */}
+          <div className="px-4 py-2.5 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[11px] font-mono text-slate-400">v{appVersion}</span>
+              {hasUpdateAvailable && (
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsUpdateModalOpen(true)}
+              className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
+                hasUpdateAvailable
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500 font-semibold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Check for Mediflex System Updates">
+              <DownloadCloudIcon className="h-3.5 w-3.5" />
+              <span>{hasUpdateAvailable ? 'Update Now' : 'Check Update'}</span>
+            </button>
+          </div>
+
           {/* User & Logout */}
           <div className="p-4 border-t border-slate-800 bg-slate-950">
             <div className="flex items-center justify-between mb-4">
@@ -185,6 +236,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-md relative"
+              title="Check for Updates">
+              <DownloadCloudIcon className="h-5 w-5" />
+              {hasUpdateAvailable && (
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span>
+              )}
+            </button>
             {isAdmin && (
               <Link
                 to="/suppliers?tab=alerts"
@@ -225,6 +285,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
+
+      {/* Auto-Update Modal Dialog */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+      />
     </div>
   );
 }

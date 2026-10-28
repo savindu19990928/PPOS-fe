@@ -1,0 +1,65 @@
+name: Release Application
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish_type:
+        description: 'Publish Type'
+        required: false
+        default: 'always'
+        type: choice
+        options:
+          - always
+          - onTagOrDraft
+          - onTag
+
+# Permissions required to create releases and upload installer assets
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release (Windows 7/8/10/11)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Build Web Frontend (Vite)
+        run: npm run build
+
+      - name: Compile Electron Main & Preload (TypeScript)
+        run: npm run electron:build
+
+      - name: Package & Publish to GitHub Releases
+        env:
+          # Automatically uses repository secrets or GitHub Actions write token
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          npx electron-builder --win --x64 --ia32 --publish ${{ github.event.inputs.publish_type || 'always' }}
+
+      - name: Upload Installer Artifacts as Job Backup
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-installers
+          path: |
+            release/*.exe
+            release/*.msi
+            release/*.yml
+            release/*.blockmap
+          if-no-files-found: warn

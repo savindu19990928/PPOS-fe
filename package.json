@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
+    "electron-updater": "^6.8.11",
     "express": "^5.2.1",
     "framer-motion": "^11.5.4",
     "lucide-react": "0.522.0",
@@ -56,6 +57,13 @@
     "appId": "com.mediflex.pos",
     "productName": "Mediflex POS System",
     "electronVersion": "22.3.27",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "savindu19990928",
+        "repo": "PPOS-fe"
+      }
+    ],
     "directories": {
       "output": "release"
     },

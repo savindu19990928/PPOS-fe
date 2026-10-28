@@ -1,25 +1,196 @@
 import { app, BrowserWindow, Menu, ipcMain } from "electron";
 import path from "path";
+import fs from "fs";
+import https from "https";
+import dotenv from "dotenv";
+import { autoUpdater } from "electron-updater";
 
-// Windows 7/8/8.1 compatibility flags:
+// ==============================================================
+// 1. Environment Configuration (.env & GitHub Token)
+// ==============================================================
+const possibleEnvPaths = [
+  path.join(__dirname, "../.env"),
+  path.join(process.cwd(), ".env"),
+  path.join(app.getAppPath(), ".env"),
+  path.join(process.resourcesPath || "", ".env")
+];
+
+for (const p of possibleEnvPaths) {
+  if (p && fs.existsSync(p)) {
+    dotenv.config({ path: p });
+    break;
+  }
+}
+
+const githubToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+if (githubToken) {
+  process.env.GH_TOKEN = githubToken;
+}
+
+// ==============================================================
+// 2. Windows 7 / 8 / 8.1 Legacy Compatibility Flags
+// ==============================================================
 // 1. Disable window occlusion calculation (prevents blank/freezing screens on Windows 7 & 8.1)
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 // 2. Disable GPU sandbox for legacy Windows graphics drivers
 app.commandLine.appendSwitch("disable-gpu-sandbox");
+// 3. Enforce TLS 1.2 minimum on Windows 7 for secure GitHub HTTPS communication
+app.commandLine.appendSwitch("ssl-version-min", "tls1.2");
 
-// 3. Fallback: Allow disabling hardware acceleration completely on low-spec/broken legacy drivers
+// 4. Fallback: Allow disabling hardware acceleration completely on low-spec/broken legacy drivers
 if (process.argv.includes("--no-gpu") || process.argv.includes("--disable-gpu")) {
   app.disableHardwareAcceleration();
 }
 
-// POS Printing Optimization:
-// Direct printing to default printer without dialog or preview
+// POS Printing Optimization: Direct printing to default printer without dialog or preview
 app.commandLine.appendSwitch("kiosk-printing");
 
 const isDev = !app.isPackaged;
-
 let mainWindow: BrowserWindow | null = null;
 
+// ==============================================================
+// 3. Auto-Updater Setup (electron-updater + GitHub Releases)
+// ==============================================================
+autoUpdater.autoDownload = false; // User controls download via update button
+autoUpdater.autoInstallOnAppQuit = true;
+
+if (githubToken) {
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner: "savindu19990928",
+    repo: "PPOS-fe",
+    token: githubToken
+  });
+}
+
+function sendToWindow(channel: string, data: any) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data);
+  }
+}
+
+autoUpdater.on("checking-for-update", () => {
+  sendToWindow("update-status", { status: "checking" });
+});
+
+autoUpdater.on("update-available", (info) => {
+  sendToWindow("update-status", {
+    status: "available",
+    version: info.version,
+    releaseDate: info.releaseDate,
+    releaseNotes: info.releaseNotes
+  });
+});
+
+autoUpdater.on("update-not-available", (info) => {
+  sendToWindow("update-status", {
+    status: "not-available",
+    version: info?.version || app.getVersion()
+  });
+});
+
+autoUpdater.on("error", (err) => {
+  sendToWindow("update-status", {
+    status: "error",
+    error: err?.message || "Error checking or downloading update"
+  });
+});
+
+autoUpdater.on("download-progress", (progressObj) => {
+  sendToWindow("update-status", {
+    status: "downloading",
+    percent: Math.round(progressObj.percent),
+    transferred: progressObj.transferred,
+    total: progressObj.total,
+    bytesPerSecond: progressObj.bytesPerSecond
+  });
+});
+
+autoUpdater.on("update-downloaded", (info) => {
+  sendToWindow("update-status", {
+    status: "downloaded",
+    version: info.version,
+    releaseNotes: info.releaseNotes
+  });
+});
+
+// Helper for development testing when app is not packaged
+function checkGitHubReleasesInDev() {
+  sendToWindow("update-status", { status: "checking" });
+
+  const options: https.RequestOptions = {
+    hostname: "api.github.com",
+    path: "/repos/savindu19990928/PPOS-fe/releases/latest",
+    method: "GET",
+    headers: {
+      "User-Agent": "Mediflex-POS",
+      ...(githubToken ? { Authorization: `token ${githubToken}` } : {})
+    }
+  };
+
+  const req = https.request(options, (res) => {
+    let raw = "";
+    res.on("data", (chunk) => (raw += chunk));
+    res.on("end", () => {
+      try {
+        if (res.statusCode === 200) {
+          const data = JSON.parse(raw);
+          const latestVersion = (data.tag_name || "").replace(/^v/, "");
+          const currentVersion = app.getVersion();
+
+          if (latestVersion && latestVersion !== currentVersion) {
+            sendToWindow("update-status", {
+              status: "available",
+              version: latestVersion,
+              releaseDate: data.published_at,
+              releaseNotes: data.body,
+              isDev: true
+            });
+          } else {
+            sendToWindow("update-status", {
+              status: "not-available",
+              version: currentVersion,
+              isDev: true
+            });
+          }
+        } else if (res.statusCode === 404) {
+          sendToWindow("update-status", {
+            status: "not-available",
+            version: app.getVersion(),
+            isDev: true
+          });
+        } else {
+          sendToWindow("update-status", {
+            status: "error",
+            error: `GitHub API: ${res.statusCode} ${res.statusMessage}`,
+            isDev: true
+          });
+        }
+      } catch (err: any) {
+        sendToWindow("update-status", {
+          status: "error",
+          error: err?.message || "Failed to parse release information",
+          isDev: true
+        });
+      }
+    });
+  });
+
+  req.on("error", (err) => {
+    sendToWindow("update-status", {
+      status: "error",
+      error: err.message,
+      isDev: true
+    });
+  });
+
+  req.end();
+  return { success: true };
+}
+
+// ==============================================================
+// 4. Main Window Creation
+// ==============================================================
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -37,6 +208,15 @@ function createWindow() {
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
+
+    // Automated background update check on app launch
+    if (!isDev) {
+      setTimeout(() => {
+        autoUpdater.checkForUpdates().catch((err) => {
+          console.warn("Background auto-update check notice:", err?.message);
+        });
+      }, 5000);
+    }
   });
 
   if (isDev) {
@@ -47,7 +227,56 @@ function createWindow() {
   }
 }
 
-// IPC Handlers for Native POS Printing
+// ==============================================================
+// 5. IPC Handlers for Auto-Update
+// ==============================================================
+ipcMain.handle("check-for-updates", async () => {
+  if (isDev) {
+    return checkGitHubReleasesInDev();
+  }
+  try {
+    const res = await autoUpdater.checkForUpdates();
+    return { success: true, updateInfo: res?.updateInfo };
+  } catch (err: any) {
+    sendToWindow("update-status", {
+      status: "error",
+      error: err?.message || "Failed to check for updates."
+    });
+    return { success: false, error: err?.message };
+  }
+});
+
+ipcMain.handle("download-update", async () => {
+  if (isDev) {
+    return {
+      success: false,
+      error: "Auto-download is only supported in packaged production builds."
+    };
+  }
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+});
+
+ipcMain.handle("install-update", () => {
+  try {
+    autoUpdater.quitAndInstall(false, true);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+});
+
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
+});
+
+// ==============================================================
+// 6. IPC Handlers for Native POS Printing
+// ==============================================================
 ipcMain.handle("print-receipt", async (_event, options: { html: string; silent?: boolean; deviceName?: string }) => {
   const { html, deviceName } = options;
 
@@ -62,7 +291,6 @@ ipcMain.handle("print-receipt", async (_event, options: { html: string; silent?:
       }
     });
 
-    // Resolve default printer device name if not explicitly specified
     let targetDevice = deviceName;
     if (!targetDevice) {
       try {
@@ -136,7 +364,7 @@ ipcMain.handle("get-printers", async () => {
   }
 });
 
-// Single instance lock (essential on POS machines to prevent duplicate processes)
+// Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -159,4 +387,4 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
-});
+});

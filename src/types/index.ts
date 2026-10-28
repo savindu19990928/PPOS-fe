@@ -593,3 +593,38 @@ export interface NotificationsResponse {
   };
   notifications: SupplierNotification[];
 }
+
+// ==========================================
+// Electron Native API & Auto-Updater Types
+// ==========================================
+
+export interface UpdateStatusData {
+  status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  version?: string;
+  releaseDate?: string;
+  releaseNotes?: string | any;
+  percent?: number;
+  transferred?: number;
+  total?: number;
+  bytesPerSecond?: number;
+  error?: string;
+  isDev?: boolean;
+}
+
+export interface ElectronAPI {
+  ping: () => string;
+  isElectron: boolean;
+  printReceipt: (options: { html: string; silent?: boolean; deviceName?: string }) => Promise<{ success: boolean; error?: string }>;
+  getPrinters: () => Promise<Array<{ name: string; displayName: string; isDefault: boolean }>>;
+  getAppVersion: () => Promise<string>;
+  checkForUpdates: () => Promise<any>;
+  downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+  installUpdate: () => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatus: (callback: (data: UpdateStatusData) => void) => () => void;
+}
+
+declare global {
+  interface Window {
+    electronAPI?: ElectronAPI;
+  }
+}
