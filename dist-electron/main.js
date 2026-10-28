@@ -7,11 +7,39 @@ const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const https_1 = __importDefault(require("https"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const electron_updater_1 = require("electron-updater");
 // ==============================================================
 // 1. Environment Configuration (.env & GitHub Token)
 // ==============================================================
+function loadEnvFile(envPath) {
+    try {
+        if (!envPath || !fs_1.default.existsSync(envPath))
+            return false;
+        const content = fs_1.default.readFileSync(envPath, "utf-8");
+        for (const line of content.split(/\r?\n/)) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("#"))
+                continue;
+            const eqIdx = trimmed.indexOf("=");
+            if (eqIdx !== -1) {
+                const key = trimmed.slice(0, eqIdx).trim();
+                let value = trimmed.slice(eqIdx + 1).trim();
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.slice(1, -1);
+                }
+                if (key && !process.env[key]) {
+                    process.env[key] = value;
+                }
+            }
+        }
+        return true;
+    }
+    catch (err) {
+        console.warn("Could not load env file from:", envPath, err);
+        return false;
+    }
+}
 const possibleEnvPaths = [
     path_1.default.join(__dirname, "../.env"),
     path_1.default.join(process.cwd(), ".env"),
@@ -19,8 +47,7 @@ const possibleEnvPaths = [
     path_1.default.join(process.resourcesPath || "", ".env")
 ];
 for (const p of possibleEnvPaths) {
-    if (p && fs_1.default.existsSync(p)) {
-        dotenv_1.default.config({ path: p });
+    if (loadEnvFile(p)) {
         break;
     }
 }

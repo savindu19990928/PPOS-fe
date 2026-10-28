@@ -2,12 +2,40 @@ import { app, BrowserWindow, Menu, ipcMain } from "electron";
 import path from "path";
 import fs from "fs";
 import https from "https";
-import dotenv from "dotenv";
 import { autoUpdater } from "electron-updater";
 
 // ==============================================================
 // 1. Environment Configuration (.env & GitHub Token)
 // ==============================================================
+function loadEnvFile(envPath: string): boolean {
+  try {
+    if (!envPath || !fs.existsSync(envPath)) return false;
+    const content = fs.readFileSync(envPath, "utf-8");
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIdx = trimmed.indexOf("=");
+      if (eqIdx !== -1) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        let value = trimmed.slice(eqIdx + 1).trim();
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+        if (key && !process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+    return true;
+  } catch (err) {
+    console.warn("Could not load env file from:", envPath, err);
+    return false;
+  }
+}
+
 const possibleEnvPaths = [
   path.join(__dirname, "../.env"),
   path.join(process.cwd(), ".env"),
@@ -16,8 +44,7 @@ const possibleEnvPaths = [
 ];
 
 for (const p of possibleEnvPaths) {
-  if (p && fs.existsSync(p)) {
-    dotenv.config({ path: p });
+  if (loadEnvFile(p)) {
     break;
   }
 }
