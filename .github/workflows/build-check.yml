@@ -3,12 +3,10 @@ name: Build Verification Check
 on:
   push:
     branches:
-      - main
-      - master
+      - local
   pull_request:
     branches:
-      - main
-      - master
+      - local
   workflow_dispatch:
 
 jobs:
