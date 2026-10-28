@@ -20,6 +20,11 @@ export interface Product {
   unit_of_measure_name: string;
   unit_abbreviation: string;
   current_stock: string;
+  minimum_stock_level?: string;
+  barcode_image?: string;
+  supplier?: number | null;
+  supplier_name?: string | null;
+  supplier_phone?: string | null;
   is_active: boolean;
 }
 
@@ -357,4 +362,234 @@ export interface CreateCreditProfilePayload {
   notes?: string;
   is_banned?: boolean;
   ban_reason?: string;
+}
+
+// ==========================================
+// Supplier Management & Supply Tracking
+// ==========================================
+
+export interface SupplierProduct {
+  id: number;
+  name: string;
+  barcode: string;
+  barcode_image?: string;
+  selling_price: string;
+  current_stock: string;
+  minimum_stock_level?: string;
+  unit_abbreviation?: string;
+  unit_of_measure?: number;
+  unit_of_measure_name?: string;
+  supplier?: number;
+  supplier_name?: string;
+  supplier_phone?: string;
+  is_active: boolean;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  amount_owed: string;
+  payment_due_date?: string | null;
+  is_payment_overdue?: boolean;
+  days_until_payment_due?: number | null;
+  refund_owed: string;
+  refund_due_date?: string | null;
+  is_refund_overdue?: boolean;
+  days_until_refund_due?: number | null;
+  next_supply_date?: string | null;
+  next_supply_notes?: string;
+  days_until_next_supply?: number | null;
+  products_count?: number;
+  products?: SupplierProduct[];
+  notes?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SupplierFilterParams {
+  page?: number;
+  search?: string;
+  is_active?: boolean | string;
+  has_amount_owed?: boolean | string;
+  has_refund_owed?: boolean | string;
+  has_next_supply?: boolean | string;
+  ordering?: string;
+}
+
+export interface CreateSupplierPayload {
+  name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  amount_owed?: string;
+  payment_due_date?: string | null;
+  refund_owed?: string;
+  refund_due_date?: string | null;
+  next_supply_date?: string | null;
+  next_supply_notes?: string;
+  notes?: string;
+  is_active?: boolean;
+}
+
+export interface MarkNextSupplyPayload {
+  next_supply_date: string;
+  next_supply_notes?: string;
+}
+
+export interface MarkNextSupplyResponse {
+  message: string;
+  supplier: Supplier;
+}
+
+export interface RecordSupplierPaymentPayload {
+  amount: string | number;
+  new_payment_due_date?: string | null;
+  notes?: string;
+}
+
+export interface RecordSupplierPaymentResponse {
+  message: string;
+  amount_paid: string;
+  remaining_amount_owed: string;
+  payment_due_date?: string | null;
+  supplier: Supplier;
+}
+
+export interface RecordSupplierRefundPayload {
+  amount: string | number;
+  notes?: string;
+}
+
+export interface RecordSupplierRefundResponse {
+  message: string;
+  amount_received: string;
+  remaining_refund_owed: string;
+  refund_due_date?: string | null;
+  supplier: Supplier;
+}
+
+// Next Supplying Items
+export interface NextSupplyingItem {
+  product_id: number;
+  product_name: string;
+  barcode: string;
+  selling_price: string;
+  current_stock: string;
+  minimum_stock_level: string;
+  unit_abbreviation?: string;
+  is_low_stock: boolean;
+  supplier_id: number;
+  supplier_name: string;
+  supplier_phone?: string;
+  supplier_contact_person?: string;
+  next_supply_date: string;
+  days_until_supply: number;
+  supply_status: 'TODAY' | 'UPCOMING' | 'OVERDUE' | string;
+  notes?: string;
+}
+
+export interface NextSupplyingItemsResponse {
+  total_items: number;
+  total_suppliers_scheduled: number;
+  summary: {
+    scheduled_today_count: number;
+    scheduled_upcoming_count: number;
+    scheduled_overdue_count: number;
+    low_stock_items_count: number;
+  };
+  items: NextSupplyingItem[];
+}
+
+export interface NextSupplyingItemsParams {
+  supplier_id?: number;
+  date_from?: string;
+  date_to?: string;
+  only_low_stock?: boolean;
+}
+
+// Upcoming Supplier Payments & Refunds
+export interface SupplierPayableItem {
+  supplier_id: number;
+  supplier_name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  amount_owed: string;
+  payment_due_date: string;
+  days_until_due: number;
+  is_overdue: boolean;
+  status: 'OVERDUE' | 'UPCOMING' | string;
+  notes?: string;
+}
+
+export interface SupplierRefundItem {
+  supplier_id: number;
+  supplier_name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  refund_owed: string;
+  refund_due_date: string;
+  days_until_due: number;
+  is_overdue: boolean;
+  status: 'OVERDUE' | 'UPCOMING' | string;
+  notes?: string;
+}
+
+export interface SupplierPaymentsSummaryResponse {
+  summary: {
+    total_amount_we_owe: string;
+    total_refunds_owed_to_us: string;
+    net_balance: string;
+    overdue_payables_count: number;
+    upcoming_payables_count: number;
+    overdue_refunds_count: number;
+    upcoming_refunds_count: number;
+  };
+  payments_to_pay: SupplierPayableItem[];
+  refunds_to_receive: SupplierRefundItem[];
+}
+
+export interface SupplierPaymentsParams {
+  type?: 'payables' | 'refunds' | 'all';
+  is_overdue?: boolean;
+  due_within_days?: number;
+}
+
+// Supplier Alerts & Notifications
+export interface SupplierNotification {
+  id: string;
+  category: 'SUPPLIER_PAYMENT_DUE' | 'SUPPLIER_REFUND_DUE' | 'UPCOMING_SUPPLY' | 'LOW_STOCK' | string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO' | string;
+  title: string;
+  message: string;
+  due_date?: string;
+  days_remaining?: number;
+  amount?: string;
+  supplier_id?: number;
+  supplier_name?: string;
+  product_id?: number;
+  product_name?: string;
+  current_stock?: string;
+  minimum_stock_level?: string;
+}
+
+export interface NotificationsResponse {
+  summary: {
+    total_notifications: number;
+    critical_count: number;
+    warning_count: number;
+    info_count: number;
+    supplier_payables_alert_count: number;
+    supplier_refunds_alert_count: number;
+    upcoming_supplies_alert_count: number;
+    low_stock_alert_count: number;
+  };
+  notifications: SupplierNotification[];
 }

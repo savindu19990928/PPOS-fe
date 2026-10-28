@@ -11,6 +11,7 @@ import { ProductsPage } from './pages/ProductsPage';
 import { SalesPage } from './pages/SalesPage';
 import { StockPage } from './pages/StockPage';
 import { CreditPage } from './pages/CreditPage';
+import { SuppliersPage } from './pages/SuppliersPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -70,6 +71,15 @@ export function App() {
             element={
               <AdminRoute>
                 <StockPage />
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/suppliers"
+            element={
+              <AdminRoute>
+                <SuppliersPage />
               </AdminRoute>
             }
           />

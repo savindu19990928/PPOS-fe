@@ -20,7 +20,22 @@ import {
   CollectPaymentPayload,
   CollectPaymentResponse,
   CreateCreditProfilePayload,
-  BulkCreateStockMovementsResponse
+  BulkCreateStockMovementsResponse,
+  Supplier,
+  SupplierProduct,
+  SupplierFilterParams,
+  CreateSupplierPayload,
+  MarkNextSupplyPayload,
+  MarkNextSupplyResponse,
+  RecordSupplierPaymentPayload,
+  RecordSupplierPaymentResponse,
+  RecordSupplierRefundPayload,
+  RecordSupplierRefundResponse,
+  NextSupplyingItemsResponse,
+  NextSupplyingItemsParams,
+  SupplierPaymentsSummaryResponse,
+  SupplierPaymentsParams,
+  NotificationsResponse
 } from '../types';
 
 const BASE_URL = 'https://ppos-813344430767.asia-southeast1.run.app';
@@ -340,5 +355,120 @@ export const api = {
   deleteCreditProfile: (id: number): Promise<void> =>
     api.request<void>(`/api/credit-profiles/${id}/`, {
       method: 'DELETE'
-    })
+    }),
+
+  // ==========================================
+  // Supplier Management Endpoints (Admin Only)
+  // ==========================================
+
+  getSuppliers: (
+    params?: SupplierFilterParams | number
+  ): Promise<PaginatedResponse<Supplier> | Supplier[]> => {
+    const q = new URLSearchParams();
+    if (typeof params === 'number') {
+      q.set('page', String(params));
+    } else if (params) {
+      if (params.page) q.set('page', String(params.page));
+      if (params.search) q.set('search', params.search);
+      if (params.is_active !== undefined && params.is_active !== '') {
+        q.set('is_active', String(params.is_active));
+      }
+      if (params.has_amount_owed !== undefined && params.has_amount_owed !== '') {
+        q.set('has_amount_owed', String(params.has_amount_owed));
+      }
+      if (params.has_refund_owed !== undefined && params.has_refund_owed !== '') {
+        q.set('has_refund_owed', String(params.has_refund_owed));
+      }
+      if (params.has_next_supply !== undefined && params.has_next_supply !== '') {
+        q.set('has_next_supply', String(params.has_next_supply));
+      }
+      if (params.ordering) q.set('ordering', params.ordering);
+    }
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<PaginatedResponse<Supplier> | Supplier[]>(`/api/suppliers/${qs}`);
+  },
+
+  getSupplierDetails: (id: number): Promise<Supplier> =>
+    api.request<Supplier>(`/api/suppliers/${id}/`),
+
+  createSupplier: (data: CreateSupplierPayload): Promise<Supplier> =>
+    api.request<Supplier>('/api/suppliers/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  updateSupplier: (
+    id: number,
+    data: Partial<CreateSupplierPayload>
+  ): Promise<Supplier> =>
+    api.request<Supplier>(`/api/suppliers/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
+
+  deleteSupplier: (id: number): Promise<void> =>
+    api.request<void>(`/api/suppliers/${id}/`, {
+      method: 'DELETE'
+    }),
+
+  markNextSupplyDate: (
+    id: number,
+    data: MarkNextSupplyPayload
+  ): Promise<MarkNextSupplyResponse> =>
+    api.request<MarkNextSupplyResponse>(`/api/suppliers/${id}/mark-next-supply/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  recordSupplierPayment: (
+    id: number,
+    data: RecordSupplierPaymentPayload
+  ): Promise<RecordSupplierPaymentResponse> =>
+    api.request<RecordSupplierPaymentResponse>(`/api/suppliers/${id}/record-payment/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  recordSupplierRefund: (
+    id: number,
+    data: RecordSupplierRefundPayload
+  ): Promise<RecordSupplierRefundResponse> =>
+    api.request<RecordSupplierRefundResponse>(`/api/suppliers/${id}/record-refund/`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  getSupplierProducts: (id: number): Promise<SupplierProduct[]> =>
+    api.request<SupplierProduct[]>(`/api/suppliers/${id}/products/`),
+
+  // Next Scheduled Supplying Items (Admin Only)
+  getNextSupplyingItems: (
+    params?: NextSupplyingItemsParams
+  ): Promise<NextSupplyingItemsResponse> => {
+    const q = new URLSearchParams();
+    if (params?.supplier_id) q.set('supplier_id', String(params.supplier_id));
+    if (params?.date_from) q.set('date_from', params.date_from);
+    if (params?.date_to) q.set('date_to', params.date_to);
+    if (params?.only_low_stock !== undefined) {
+      q.set('only_low_stock', String(params.only_low_stock));
+    }
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<NextSupplyingItemsResponse>(`/api/next-supplying-items/${qs}`);
+  },
+
+  // Upcoming Supplier Payments & Refunds (Admin Only)
+  getSupplierPayments: (
+    params?: SupplierPaymentsParams
+  ): Promise<SupplierPaymentsSummaryResponse> => {
+    const q = new URLSearchParams();
+    if (params?.type && params.type !== 'all') q.set('type', params.type);
+    if (params?.is_overdue !== undefined) q.set('is_overdue', String(params.is_overdue));
+    if (params?.due_within_days !== undefined) q.set('due_within_days', String(params.due_within_days));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<SupplierPaymentsSummaryResponse>(`/api/supplier-payments/${qs}`);
+  },
+
+  // Supplier Alerts in Notifications (Admin Only)
+  getNotifications: (): Promise<NotificationsResponse> =>
+    api.request<NotificationsResponse>('/api/notifications/')
 };
