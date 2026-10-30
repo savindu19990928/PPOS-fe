@@ -7,6 +7,7 @@ import {
   subscribeToUpdateStatus
 } from '../lib/updater';
 import { UpdateModal } from './common/UpdateModal';
+import { ChangePasswordModal } from './common/ChangePasswordModal';
 import {
   HistoryIcon,
   LogOutIcon,
@@ -17,7 +18,9 @@ import {
   UsersIcon,
   Building2Icon,
   BellIcon,
-  DownloadCloudIcon
+  DownloadCloudIcon,
+  ShieldCheckIcon,
+  KeyIcon
 } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -32,6 +35,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [appVersion, setAppVersion] = useState<string>('0.0.1');
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
 
   useEffect(() => {
     getAppVersion().then((v) => setAppVersion(v));
@@ -66,7 +70,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     navigate('/login');
   };
 
-  // RBAC Navigation: Cashiers and Admins have Products/POS & Customer Credit. Admins additionally have Sales History, Stock Movements, & Suppliers.
+  // RBAC Navigation: Cashiers and Admins have Products/POS & Customer Credit. Admins additionally have Sales History, Stock Movements, Suppliers & User Management.
   const navItems = [
     {
       label: 'Products & POS',
@@ -95,6 +99,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             path: '/suppliers',
             icon: Building2Icon,
             badge: alertCount > 0 ? alertCount : undefined
+          },
+          {
+            label: 'User Management',
+            path: '/users',
+            icon: ShieldCheckIcon
           }
         ]
       : [])
@@ -208,13 +217,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
-            <Button
-              variant="secondary"
-              className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-slate-900 border-slate-800"
-              onClick={handleLogout}>
-              <LogOutIcon className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+            <div className="space-y-1.5">
+              <Button
+                variant="secondary"
+                className="w-full justify-start text-xs text-slate-300 hover:text-white hover:bg-slate-900 border-slate-800"
+                onClick={() => setIsChangePasswordOpen(true)}>
+                <KeyIcon className="h-3.5 w-3.5 mr-2 text-emerald-400" />
+                Change Password
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full justify-start text-xs text-slate-400 hover:text-red-400 hover:bg-slate-900 border-slate-800"
+                onClick={handleLogout}>
+                <LogOutIcon className="h-3.5 w-3.5 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </aside>
@@ -236,6 +254,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-md"
+              title="Change Password">
+              <KeyIcon className="h-5 w-5 text-emerald-600" />
+            </button>
             <button
               onClick={() => setIsUpdateModalOpen(true)}
               className="p-2 text-slate-600 hover:bg-slate-100 rounded-md relative"
@@ -290,6 +314,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <UpdateModal
         isOpen={isUpdateModalOpen}
         onClose={() => setIsUpdateModalOpen(false)}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
     </div>
   );

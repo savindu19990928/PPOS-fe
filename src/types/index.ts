@@ -7,8 +7,82 @@ export interface User {
   first_name?: string;
   last_name?: string;
   role?: UserRole;
+  is_active?: boolean;
   is_staff?: boolean;
   is_superuser?: boolean;
+  date_joined?: string;
+  last_login?: string | null;
+}
+
+export interface CreateUserPayload {
+  username: string;
+  password: string;
+  role?: UserRole;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  is_active?: boolean;
+}
+
+export interface UserFilterParams {
+  page?: number;
+  search?: string;
+  role?: UserRole | '';
+  is_active?: boolean | string;
+  ordering?: string;
+}
+
+export interface BlockUserResponse {
+  detail: string;
+  id: number;
+  username: string;
+  is_active: boolean;
+}
+
+export interface UserRecentActivityItem {
+  id: number;
+  timestamp: string;
+  action: string;
+  model: string;
+  object_id: string;
+  object_repr: string;
+  changes?: string;
+  remote_addr?: string;
+}
+
+export interface UserAuditTrailItem {
+  id: number;
+  timestamp: string;
+  action: string;
+  actor: string;
+  changes?: string;
+  object_repr?: string;
+}
+
+export interface UserHistorySummary {
+  total_sales_count: number;
+  total_sales_amount: string;
+  total_cash_transactions_count: number;
+  total_stock_movements_count: number;
+  total_credit_payments_collected: number;
+  reprints_count: number;
+}
+
+export interface UserHistoryResponse {
+  user: User;
+  summary: UserHistorySummary;
+  recent_activities: UserRecentActivityItem[];
+  account_audit_trail: UserAuditTrailItem[];
+}
+
+export interface ChangePasswordPayload {
+  old_password: string;
+  new_password: string;
+  confirm_password?: string;
+}
+
+export interface ChangePasswordResponse {
+  detail: string;
 }
 
 export interface Product {
@@ -16,16 +90,49 @@ export interface Product {
   name: string;
   barcode: string;
   selling_price: string;
+  cost_price?: string;
   unit_of_measure: number;
-  unit_of_measure_name: string;
-  unit_abbreviation: string;
+  unit_of_measure_name?: string;
+  unit_abbreviation?: string;
   current_stock: string;
   minimum_stock_level?: string;
   barcode_image?: string;
   supplier?: number | null;
   supplier_name?: string | null;
   supplier_phone?: string | null;
+  description?: string;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateProductPayload {
+  name: string;
+  barcode?: string;
+  unit_of_measure: number;
+  supplier?: number | null;
+  selling_price: string;
+  cost_price?: string;
+  minimum_stock_level?: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export type UpdateProductPayload = Partial<CreateProductPayload>;
+
+export interface ProductFilterParams {
+  page?: number;
+  search?: string;
+  barcode?: string;
+  is_active?: boolean | string;
+  supplier?: number | string;
+  ordering?: string;
+}
+
+export interface DeleteProductResponse {
+  detail?: string;
+  id?: number;
+  is_active?: boolean;
 }
 
 export interface CartItem extends Product {

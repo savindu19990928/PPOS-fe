@@ -8,7 +8,9 @@ import { Cart } from '../components/pos/Cart';
 import { PaymentModal } from '../components/pos/PaymentModal';
 import { BillPreview } from '../components/pos/BillPreview';
 import { api } from '../lib/api';
-import { Product, CartItem, BillItem, PaginatedResponse } from '../types';
+import { Product, CartItem, BillItem, PaginatedResponse, ProductFilterParams } from '../types';
+import { CreateEditProductModal } from '../components/products/CreateEditProductModal';
+import { DeleteProductModal } from '../components/products/DeleteProductModal';
 import {
   Loader2,
   RefreshCwIcon,
@@ -17,12 +19,17 @@ import {
   XIcon,
   PlusCircleIcon,
   ShoppingCartIcon,
-  KeyboardIcon } from
-'lucide-react';
+  KeyboardIcon,
+  PlusIcon,
+  Edit2Icon,
+  Trash2Icon,
+  CheckCircle2Icon
+} from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../context/AuthContext';
+
 export function ProductsPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   // Product list state
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +37,22 @@ export function ProductsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactivated'>('active');
+
+  // Product CRUD Modals State (Admin only)
+  const [isCreateEditOpen, setIsCreateEditOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -61,12 +84,14 @@ export function ProductsPage() {
         setIsLoading(true);
       }
       try {
-        const data: PaginatedResponse<Product> = await api.getProductsPaginated(
-          page,
-          search
-        );
-        setProducts(data.results);
-        setTotalCount(data.count);
+        const filterParams: ProductFilterParams = { page };
+        if (search) filterParams.search = search;
+        if (statusFilter === 'active') filterParams.is_active = true;
+        if (statusFilter === 'deactivated') filterParams.is_active = false;
+
+        const data: PaginatedResponse<Product> = await api.getProductsPaginated(filterParams);
+        setProducts(data.results || []);
+        setTotalCount(data.count || 0);
       } catch (error) {
         console.error('Failed to fetch products', error);
       } finally {
@@ -74,7 +99,7 @@ export function ProductsPage() {
         setIsRefreshing(false);
       }
     },
-    []
+    [statusFilter]
   );
   useEffect(() => {
     setCurrentPage(1);
@@ -317,17 +342,24 @@ export function ProductsPage() {
     }
   };
   const columns = [
-  {
-    header: 'Product',
-    accessor: (p: Product) =>
-    <div className="flex items-center gap-2 sm:gap-3">
+    {
+      header: 'Product',
+      accessor: (p: Product) => (
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
             <PackageIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-slate-900 truncate text-sm sm:text-base">
-              {p.name}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-slate-900 truncate text-sm sm:text-base">
+                {p.name}
+              </p>
+              {!p.is_active && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                  Deactivated
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs text-slate-400 font-mono">{p.barcode}</p>
               {p.supplier_name && (
@@ -338,55 +370,94 @@ export function ProductsPage() {
             </div>
           </div>
         </div>
-
-  },
-  {
-    header: 'Price',
-    accessor: (p: Product) =>
-    <span className="font-bold text-slate-900 font-mono text-sm sm:text-base">
-          {parseFloat(p.selling_price).toFixed(2)}
-        </span>,
-
-    className: 'text-right'
-  },
-  {
-    header: 'Stock',
-    accessor: (p: Product) => {
-      const stock = parseFloat(p.current_stock);
-      const displayStock = stock > 1000 ? '1000+' : stock.toFixed(0);
-      return (
-        <Badge
-          variant={stock > 20 ? 'success' : stock > 0 ? 'warning' : 'error'}>
-
-            {displayStock} {p.unit_abbreviation}
-          </Badge>);
-
-    }
-  },
-  {
-    header: '',
-    accessor: (p: Product) => {
-      const inCart = cart.find((c) => c.id === p.id);
-      const stock = parseFloat(p.current_stock);
-      const atStockLimit = inCart ? inCart.quantity >= stock : false;
-      return (
-        <Button
-          size="sm"
-          variant={inCart ? 'secondary' : 'primary'}
-          onClick={(e) => {
-            e.stopPropagation();
-            addToCart(p);
-          }}
-          disabled={stock <= 0 || atStockLimit}
-          className="whitespace-nowrap text-xs sm:text-sm">
-
-            <PlusCircleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
-            {atStockLimit ? 'Max' : inCart ? `Add (${inCart.quantity})` : 'Add'}
-          </Button>);
-
+      )
     },
-    className: 'text-right w-24 sm:w-32'
-  }];
+    {
+      header: 'Price',
+      accessor: (p: Product) => (
+        <div className="text-right">
+          <span className="font-bold text-slate-900 font-mono text-sm sm:text-base">
+            Rs. {parseFloat(p.selling_price).toFixed(2)}
+          </span>
+          {isAdmin && p.cost_price && (
+            <p className="text-[10px] text-slate-400 font-mono">
+              Cost: {parseFloat(p.cost_price).toFixed(2)}
+            </p>
+          )}
+        </div>
+      ),
+      className: 'text-right'
+    },
+    {
+      header: 'Stock',
+      accessor: (p: Product) => {
+        const stock = parseFloat(p.current_stock);
+        const displayStock = stock > 1000 ? '1000+' : stock.toFixed(0);
+        return (
+          <Badge
+            variant={stock > 20 ? 'success' : stock > 0 ? 'warning' : 'error'}>
+            {displayStock} {p.unit_abbreviation}
+          </Badge>
+        );
+      }
+    },
+    {
+      header: 'Actions',
+      accessor: (p: Product) => {
+        const inCart = cart.find((c) => c.id === p.id);
+        const stock = parseFloat(p.current_stock);
+        const atStockLimit = inCart ? inCart.quantity >= stock : false;
+        const canSell = p.is_active && stock > 0;
+
+        return (
+          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              variant={inCart ? 'secondary' : 'primary'}
+              onClick={(e) => {
+                e.stopPropagation();
+                addToCart(p);
+              }}
+              disabled={!canSell || atStockLimit}
+              className="whitespace-nowrap text-xs">
+              <PlusCircleIcon className="h-3.5 w-3.5 mr-1" />
+              {atStockLimit ? 'Max' : inCart ? `Add (${inCart.quantity})` : 'Add'}
+            </Button>
+
+            {isAdmin && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProductToEdit(p);
+                    setIsCreateEditOpen(true);
+                  }}
+                  title="Edit Product"
+                  className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50">
+                  <Edit2Icon className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProductToDelete(p);
+                    setIsDeleteOpen(true);
+                  }}
+                  title="Delete / Deactivate Product"
+                  className="p-1.5 text-red-600 hover:bg-red-50">
+                  <Trash2Icon className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      },
+      className: 'text-right'
+    }
+  ];
 
   return (
     <Layout>
@@ -400,11 +471,22 @@ export function ProductsPage() {
             <p className="text-sm text-slate-500">{totalCount} products</p>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setProductToEdit(null);
+                  setIsCreateEditOpen(true);
+                }}>
+                <PlusIcon className="h-4 w-4 mr-1.5" />
+                New Product
+              </Button>
+            )}
             <button
               onClick={() => setShowShortcuts((prev) => !prev)}
               className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${showShortcuts ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}`}
               title="Toggle keyboard shortcuts (F4)">
-
               <KeyboardIcon className="h-3.5 w-3.5" />
               Shortcuts
             </button>
@@ -413,10 +495,8 @@ export function ProductsPage() {
               size="sm"
               onClick={handleRefresh}
               isLoading={isRefreshing}>
-
               <RefreshCwIcon
                 className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-
               Refresh
             </Button>
           </div>
@@ -471,33 +551,69 @@ export function ProductsPage() {
           </div>
         }
 
-        <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            className="w-full h-10 pl-10 pr-24 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm shadow-sm"
-            placeholder="Search products by name or barcode..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearchKeyDown} />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="w-full h-10 pl-10 pr-24 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm shadow-sm"
+              placeholder="Search products by name or barcode..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown} />
 
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-            {searchQuery &&
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setHighlightedIndex(-1);
-              }}
-              className="text-slate-400 hover:text-slate-600 p-0.5">
-
-                <XIcon className="h-4 w-4" />
-              </button>
-            }
-            <kbd className="hidden sm:inline-block px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded text-[10px] font-mono border border-slate-200">
-              F1
-            </kbd>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setHighlightedIndex(-1);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 p-0.5">
+                  <XIcon className="h-4 w-4" />
+                </button>
+              )}
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded text-[10px] font-mono border border-slate-200">
+                F1
+              </kbd>
+            </div>
           </div>
+
+          {isAdmin && (
+            <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 shadow-sm text-xs self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('active')}
+                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  statusFilter === 'active'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}>
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('deactivated')}
+                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  statusFilter === 'deactivated'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}>
+                Deactivated
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  statusFilter === 'all'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}>
+                All
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
@@ -703,6 +819,45 @@ export function ProductsPage() {
           canPrint={true}
         />
       )}
-    </Layout>);
 
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 bg-slate-900 text-white rounded-xl shadow-xl animate-in slide-in-from-top-4 duration-200 text-xs">
+          <CheckCircle2Icon className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Admin Product CRUD Modals */}
+      <CreateEditProductModal
+        isOpen={isCreateEditOpen}
+        onClose={() => {
+          setIsCreateEditOpen(false);
+          setProductToEdit(null);
+        }}
+        productToEdit={productToEdit}
+        onSuccess={(savedProduct, isEdit) => {
+          showToast(
+            isEdit
+              ? `Product '${savedProduct.name}' updated successfully.`
+              : `Product '${savedProduct.name}' created successfully.`
+          );
+          handleRefresh();
+        }}
+      />
+
+      <DeleteProductModal
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false);
+          setProductToDelete(null);
+        }}
+        product={productToDelete}
+        onSuccess={({ message }) => {
+          showToast(message);
+          handleRefresh();
+        }}
+      />
+    </Layout>
+  );
 }

@@ -33,12 +33,22 @@ import {
   RecordSupplierRefundResponse,
   NextSupplyingItemsResponse,
   NextSupplyingItemsParams,
+  NotificationsResponse,
+  CreateProductPayload,
+  UpdateProductPayload,
+  ProductFilterParams,
+  DeleteProductResponse,
+  CreateUserPayload,
+  UserFilterParams,
+  BlockUserResponse,
+  UserHistoryResponse,
+  ChangePasswordPayload,
+  ChangePasswordResponse,
   SupplierPaymentsSummaryResponse,
-  SupplierPaymentsParams,
-  NotificationsResponse
+  SupplierPaymentsParams
 } from '../types';
 
-const BASE_URL = 'https://ppos-813344430767.asia-southeast1.run.app';
+const BASE_URL = 'http://127.0.0.1:8000';
 
 export const api = {
   getToken: () => localStorage.getItem('access_token'),
@@ -116,7 +126,7 @@ export const api = {
     return response.json();
   },
 
-  // Auth
+  // Auth & Profile
   login: (credentials: { username: string; password: string }): Promise<LoginResponse> =>
     api.request<LoginResponse>('/api/auth/login/', {
       method: 'POST',
@@ -125,27 +135,89 @@ export const api = {
 
   getMe: (): Promise<User> => api.request<User>('/api/auth/me/'),
 
+  getProfile: (): Promise<User> => api.request<User>('/api/profile/'),
+
+  changePassword: (data: ChangePasswordPayload): Promise<ChangePasswordResponse> =>
+    api.request<ChangePasswordResponse>('/api/profile/change-password/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
   refreshToken: (refresh: string): Promise<{ access: string }> =>
     api.request<{ access: string }>('/api/auth/refresh/', {
       method: 'POST',
       body: JSON.stringify({ refresh })
     }),
 
-  // Products
-  getProducts: async (search?: string): Promise<Product[]> => {
-    const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    const res = await api.request<any>(`/api/products/${query}`);
+  // Products (All Users: View/Search. Admin Only: Create, Update, Delete)
+  getProducts: async (paramsOrSearch?: ProductFilterParams | string): Promise<Product[]> => {
+    const q = new URLSearchParams();
+    if (typeof paramsOrSearch === 'string') {
+      if (paramsOrSearch) q.set('search', paramsOrSearch);
+    } else if (paramsOrSearch) {
+      if (paramsOrSearch.search) q.set('search', paramsOrSearch.search);
+      if (paramsOrSearch.barcode) q.set('barcode', paramsOrSearch.barcode);
+      if (paramsOrSearch.is_active !== undefined && paramsOrSearch.is_active !== '') {
+        q.set('is_active', String(paramsOrSearch.is_active));
+      }
+      if (paramsOrSearch.supplier) q.set('supplier', String(paramsOrSearch.supplier));
+      if (paramsOrSearch.ordering) q.set('ordering', paramsOrSearch.ordering);
+    }
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    const res = await api.request<any>(`/api/products/${qs}`);
     return Array.isArray(res) ? res : res.results || [];
   },
-  getProductsPaginated: (page = 1, search?: string) => {
+
+  getProductsPaginated: (
+    pageOrParams: ProductFilterParams | number = 1,
+    legacySearch?: string
+  ): Promise<PaginatedResponse<Product>> => {
     const params = new URLSearchParams();
-    params.set('page', String(page));
-    if (search) params.set('search', search);
+    if (typeof pageOrParams === 'number') {
+      params.set('page', String(pageOrParams));
+      if (legacySearch) params.set('search', legacySearch);
+    } else {
+      const f = pageOrParams;
+      if (f.page) params.set('page', String(f.page));
+      if (f.search) params.set('search', f.search);
+      if (f.barcode) params.set('barcode', f.barcode);
+      if (f.is_active !== undefined && f.is_active !== '') {
+        params.set('is_active', String(f.is_active));
+      }
+      if (f.supplier) params.set('supplier', String(f.supplier));
+      if (f.ordering) params.set('ordering', f.ordering);
+    }
     return api.request<PaginatedResponse<Product>>(`/api/products/?${params.toString()}`);
   },
+
   getProductByBarcode: (barcode: string) =>
     api.request<Product[]>(`/api/products/?barcode=${encodeURIComponent(barcode)}`),
-  getProductDetails: (id: number) => api.request<Product>(`/api/products/${id}/`),
+
+  getProductDetails: (id: number): Promise<Product> =>
+    api.request<Product>(`/api/products/${id}/`),
+
+  createProduct: (data: CreateProductPayload): Promise<Product> =>
+    api.request<Product>('/api/products/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  updateProduct: (id: number, data: UpdateProductPayload): Promise<Product> =>
+    api.request<Product>(`/api/products/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
+
+  replaceProduct: (id: number, data: CreateProductPayload): Promise<Product> =>
+    api.request<Product>(`/api/products/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  deleteProduct: (id: number): Promise<DeleteProductResponse | void> =>
+    api.request<DeleteProductResponse | void>(`/api/products/${id}/`, {
+      method: 'DELETE'
+    }),
 
   // Sales (Cashier & Admin: createSale. Admin only: getSales, getSaleDetails, cancelSale, reprintSale, correctSale)
   createSale: (data: any): Promise<Sale> =>
@@ -470,5 +542,55 @@ export const api = {
 
   // Supplier Alerts in Notifications (Admin Only)
   getNotifications: (): Promise<NotificationsResponse> =>
-    api.request<NotificationsResponse>('/api/notifications/')
+    api.request<NotificationsResponse>('/api/notifications/'),
+
+  // ==========================================
+  // User Management Endpoints (Admin Only)
+  // ==========================================
+
+  getUsers: (
+    params?: UserFilterParams | number
+  ): Promise<PaginatedResponse<User> | User[]> => {
+    const q = new URLSearchParams();
+    if (typeof params === 'number') {
+      q.set('page', String(params));
+    } else if (params) {
+      if (params.page) q.set('page', String(params.page));
+      if (params.search) q.set('search', params.search);
+      if (params.role) q.set('role', params.role);
+      if (params.is_active !== undefined && params.is_active !== '') {
+        q.set('is_active', String(params.is_active));
+      }
+      if (params.ordering) q.set('ordering', params.ordering);
+    }
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<PaginatedResponse<User> | User[]>(`/api/users/${qs}`);
+  },
+
+  getUserDetails: (id: number): Promise<User> =>
+    api.request<User>(`/api/users/${id}/`),
+
+  createUser: (data: CreateUserPayload): Promise<User> =>
+    api.request<User>('/api/users/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  blockUser: (id: number): Promise<BlockUserResponse> =>
+    api.request<BlockUserResponse>(`/api/users/${id}/block/`, {
+      method: 'POST'
+    }),
+
+  unblockUser: (id: number): Promise<BlockUserResponse> =>
+    api.request<BlockUserResponse>(`/api/users/${id}/unblock/`, {
+      method: 'POST'
+    }),
+
+  getUserHistory: (id: number, limit: number = 50): Promise<UserHistoryResponse> =>
+    api.request<UserHistoryResponse>(`/api/users/${id}/history/?limit=${limit}`),
+
+  deleteUser: (id: number): Promise<void> =>
+    api.request<void>(`/api/users/${id}/`, {
+      method: 'DELETE'
+    })
 };
