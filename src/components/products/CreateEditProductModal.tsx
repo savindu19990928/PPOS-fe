@@ -50,7 +50,7 @@ export function CreateEditProductModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch reference data (Units and Suppliers)
+  // Fetch reference data (Units and Suppliers via GET /api/units/)
   useEffect(() => {
     if (isOpen) {
       setIsLoadingRefs(true);
@@ -59,17 +59,22 @@ export function CreateEditProductModal({
         api.getSuppliers().catch(() => [] as Supplier[])
       ])
         .then(([unitsData, suppliersData]) => {
-          setUnits(Array.isArray(unitsData) ? unitsData : []);
+          const loadedUnits = Array.isArray(unitsData) ? unitsData : [];
+          setUnits(loadedUnits);
           const resolvedSuppliers = Array.isArray(suppliersData)
             ? suppliersData
             : (suppliersData as any)?.results || [];
           setSuppliers(resolvedSuppliers);
+
+          if (!productToEdit && loadedUnits.length > 0) {
+            setUnitOfMeasure((prev) => (prev !== '' ? prev : loadedUnits[0].id));
+          }
         })
         .finally(() => {
           setIsLoadingRefs(false);
         });
     }
-  }, [isOpen]);
+  }, [isOpen, productToEdit]);
 
   // Sync form with productToEdit
   useEffect(() => {
@@ -87,7 +92,7 @@ export function CreateEditProductModal({
       } else {
         setName('');
         setBarcode('');
-        setUnitOfMeasure(units.length > 0 ? units[0].id : '');
+        setUnitOfMeasure('');
         setSupplier('');
         setSellingPrice('');
         setCostPrice('');
@@ -97,7 +102,7 @@ export function CreateEditProductModal({
       }
       setErrorMessage(null);
     }
-  }, [isOpen, productToEdit, units]);
+  }, [isOpen, productToEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,10 +237,17 @@ export function CreateEditProductModal({
               <ScaleIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <select
                 required
+                disabled={isLoadingRefs}
                 value={unitOfMeasure}
                 onChange={(e) => setUnitOfMeasure(e.target.value ? Number(e.target.value) : '')}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white">
-                <option value="">Select Unit</option>
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                {isLoadingRefs ? (
+                  <option value="">Loading units of measure...</option>
+                ) : units.length === 0 ? (
+                  <option value="">No units available. Please create a unit first.</option>
+                ) : (
+                  <option value="">Select Unit of Measure</option>
+                )}
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name} ({u.abbreviation})

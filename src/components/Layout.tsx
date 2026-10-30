@@ -20,7 +20,8 @@ import {
   BellIcon,
   DownloadCloudIcon,
   ShieldCheckIcon,
-  KeyIcon
+  KeyIcon,
+  ScaleIcon
 } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -99,6 +100,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             path: '/suppliers',
             icon: Building2Icon,
             badge: alertCount > 0 ? alertCount : undefined
+          },
+          {
+            label: 'Units of Measure',
+            path: '/units',
+            icon: ScaleIcon
           },
           {
             label: 'User Management',

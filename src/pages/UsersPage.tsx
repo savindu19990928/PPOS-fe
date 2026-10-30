@@ -14,7 +14,6 @@ import { useDebounce } from '../hooks/useDebounce';
 import { CreateUserModal } from '../components/users/CreateUserModal';
 import { UserHistoryModal } from '../components/users/UserHistoryModal';
 import { BlockUserConfirmModal } from '../components/users/BlockUserConfirmModal';
-import { DeleteUserConfirmModal } from '../components/users/DeleteUserConfirmModal';
 
 import {
   UsersIcon,
@@ -27,7 +26,6 @@ import {
   HistoryIcon,
   BanIcon,
   UnlockIcon,
-  Trash2Icon,
   AlertCircleIcon,
   CheckCircle2Icon,
   FilterIcon,
@@ -60,8 +58,6 @@ export function UsersPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [userForBlock, setUserForBlock] = useState<User | null>(null);
   const [isBlockOpen, setIsBlockOpen] = useState(false);
-  const [userForDelete, setUserForDelete] = useState<User | null>(null);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Fetch Users
   const fetchUsers = useCallback(
@@ -248,7 +244,7 @@ export function UsersPage() {
               History
             </Button>
 
-            {/* Block / Unblock */}
+            {/* Activate / Deactivate (Block / Unblock) */}
             <Button
               size="sm"
               variant="outline"
@@ -259,49 +255,29 @@ export function UsersPage() {
               }}
               title={
                 isTargetAdmin
-                  ? 'Admin accounts cannot be blocked'
+                  ? 'Admin accounts cannot be deactivated'
                   : isSelf
-                  ? 'Cannot block own account'
+                  ? 'Cannot deactivate own account'
                   : isBlocked
-                  ? 'Unblock user'
-                  : 'Block user'
+                  ? 'Activate user'
+                  : 'Deactivate user'
               }
-              className={`text-xs px-2.5 ${
+              className={`text-xs px-2.5 font-medium transition-colors ${
                 isBlocked
-                  ? 'text-emerald-600 hover:bg-emerald-50'
-                  : 'text-amber-600 hover:bg-amber-50'
+                  ? 'text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 border-emerald-300'
+                  : 'text-amber-700 bg-amber-50/60 hover:bg-amber-100 border-amber-300'
               } disabled:opacity-40 disabled:cursor-not-allowed`}>
               {isBlocked ? (
                 <>
                   <UnlockIcon className="h-3.5 w-3.5 mr-1" />
-                  Unblock
+                  Activate
                 </>
               ) : (
                 <>
                   <BanIcon className="h-3.5 w-3.5 mr-1" />
-                  Block
+                  Deactivate
                 </>
               )}
-            </Button>
-
-            {/* Delete Account */}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isTargetAdmin || isSelf}
-              onClick={() => {
-                setUserForDelete(u);
-                setIsDeleteOpen(true);
-              }}
-              title={
-                isTargetAdmin
-                  ? 'Admin accounts cannot be deleted'
-                  : isSelf
-                  ? 'Cannot delete own account'
-                  : 'Delete user account'
-              }
-              className="text-red-600 hover:bg-red-50 text-xs px-2 disabled:opacity-40 disabled:cursor-not-allowed">
-              <Trash2Icon className="h-3.5 w-3.5" />
             </Button>
           </div>
         );
@@ -479,19 +455,6 @@ export function UsersPage() {
           }}
           user={userForBlock}
           onSuccess={(updatedUser, message) => {
-            showNotification(message);
-            handleRefresh();
-          }}
-        />
-
-        <DeleteUserConfirmModal
-          isOpen={isDeleteOpen}
-          onClose={() => {
-            setIsDeleteOpen(false);
-            setUserForDelete(null);
-          }}
-          user={userForDelete}
-          onSuccess={(_userId, message) => {
             showNotification(message);
             handleRefresh();
           }}

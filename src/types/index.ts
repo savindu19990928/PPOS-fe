@@ -298,6 +298,29 @@ export interface UnitOfMeasure {
   id: number;
   name: string;
   abbreviation: string;
+  product_count?: number;
+}
+
+export interface CreateUnitPayload {
+  name: string;
+  abbreviation: string;
+}
+
+export interface UpdateUnitPayload {
+  name?: string;
+  abbreviation?: string;
+}
+
+export interface UnitOfMeasureFilterParams {
+  search?: string;
+  ordering?: 'name' | '-name' | 'abbreviation' | '-abbreviation' | 'id' | string;
+}
+
+export interface UnitDeleteBlockedResponse {
+  detail: string;
+  id: number;
+  name: string;
+  product_count: number;
 }
 
 export interface Denomination {

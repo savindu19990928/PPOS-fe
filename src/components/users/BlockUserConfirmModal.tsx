@@ -75,7 +75,7 @@ export function BlockUserConfirmModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isCurrentBlocked ? 'Unblock Employee Account' : 'Block Employee Account'}
+      title={isCurrentBlocked ? 'Activate Employee Account' : 'Deactivate Employee Account'}
       size="md">
       <div className="space-y-4">
         {isTargetAdmin && !isCurrentBlocked && (
@@ -84,7 +84,7 @@ export function BlockUserConfirmModal({
             <div>
               <p className="font-semibold mb-1">Administrative Account Protection</p>
               <p className="text-amber-800">
-                Admin accounts cannot be blocked. Administrators must retain continuous system access.
+                Admin accounts cannot be deactivated. Administrators must retain continuous system access.
               </p>
             </div>
           </div>
@@ -95,7 +95,7 @@ export function BlockUserConfirmModal({
             <AlertCircleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold mb-1">Self-Action Restriction</p>
-              <p className="text-amber-800">You cannot block or restrict your own logged-in account.</p>
+              <p className="text-amber-800">You cannot deactivate or restrict your own logged-in account.</p>
             </div>
           </div>
         )}
@@ -133,11 +133,14 @@ export function BlockUserConfirmModal({
           </div>
         </div>
 
-        <p className="text-xs text-slate-600 leading-relaxed">
-          {isCurrentBlocked
-            ? `Unblocking will immediately restore ${user.username}'s access to login and POS operations.`
-            : `Blocking will immediately prevent ${user.username} from logging in or processing any POS transactions.`}
-        </p>
+        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1.5">
+          <p className="font-semibold text-slate-800">Account Status Policy:</p>
+          <p className="leading-relaxed">
+            {isCurrentBlocked
+              ? `Activating will immediately restore ${user.username}'s access to log in and perform POS operations.`
+              : `Deactivating will immediately revoke login access for ${user.username}. Users cannot be deleted from the system in order to preserve transaction records, cash logs, and audit trails.`}
+          </p>
+        </div>
 
         {/* Buttons */}
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
@@ -153,12 +156,12 @@ export function BlockUserConfirmModal({
             {isCurrentBlocked ? (
               <>
                 <UnlockIcon className="h-4 w-4 mr-1.5" />
-                Unblock Account
+                Activate Account
               </>
             ) : (
               <>
                 <BanIcon className="h-4 w-4 mr-1.5" />
-                Block Account
+                Deactivate Account
               </>
             )}
           </Button>

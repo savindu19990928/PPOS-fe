@@ -7,6 +7,9 @@ import {
   PaginatedResponse,
   Product,
   UnitOfMeasure,
+  CreateUnitPayload,
+  UpdateUnitPayload,
+  UnitOfMeasureFilterParams,
   Denomination,
   LoginResponse,
   User,
@@ -48,7 +51,7 @@ import {
   SupplierPaymentsParams
 } from '../types';
 
-const BASE_URL = 'http://ppos.devrious.lk';
+const BASE_URL = 'https://ppos.devrious.lk';
 
 export const api = {
   getToken: () => localStorage.getItem('access_token'),
@@ -87,8 +90,9 @@ export const api = {
 
     if (!response.ok) {
       let errorMessage = `Error ${response.status}`;
+      let errorData: any = null;
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         if (typeof errorData === 'string') {
           errorMessage = errorData;
         } else if (errorData.error) {
@@ -115,6 +119,7 @@ export const api = {
       }
       const error = new Error(errorMessage);
       (error as any).status = response.status;
+      (error as any).data = errorData;
       throw error;
     }
 
@@ -357,8 +362,43 @@ export const api = {
     return api.request<PaginatedResponse<StockMovement>>(`/api/products/${productId}/stock-movements/${qs}`);
   },
 
-  // Units of Measure
-  getUnits: (): Promise<UnitOfMeasure[]> => api.request<UnitOfMeasure[]>('/api/units/'),
+  // Units of Measure (Admin Only Management & Dropdown Usage)
+  getUnits: (params?: UnitOfMeasureFilterParams): Promise<UnitOfMeasure[]> => {
+    const q = new URLSearchParams();
+    if (params?.search) q.set('search', params.search);
+    if (params?.ordering) q.set('ordering', params.ordering);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return api.request<UnitOfMeasure[]>(`/api/units/${qs}`);
+  },
+
+  getUnitDetails: (id: number): Promise<UnitOfMeasure> =>
+    api.request<UnitOfMeasure>(`/api/units/${id}/`),
+
+  createUnit: (data: CreateUnitPayload): Promise<UnitOfMeasure> =>
+    api.request<UnitOfMeasure>('/api/units/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  updateUnit: (id: number, data: UpdateUnitPayload): Promise<UnitOfMeasure> =>
+    api.request<UnitOfMeasure>(`/api/units/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
+
+  replaceUnit: (id: number, data: CreateUnitPayload): Promise<UnitOfMeasure> =>
+    api.request<UnitOfMeasure>(`/api/units/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  deleteUnit: (id: number): Promise<void> =>
+    api.request<void>(`/api/units/${id}/`, {
+      method: 'DELETE'
+    }),
+
+  getUnitProducts: (id: number): Promise<Product[]> =>
+    api.request<Product[]>(`/api/units/${id}/products/`),
 
   // Denominations
   getDenominations: (): Promise<Denomination[]> => api.request<Denomination[]>('/api/denominations/'),
@@ -587,10 +627,5 @@ export const api = {
     }),
 
   getUserHistory: (id: number, limit: number = 50): Promise<UserHistoryResponse> =>
-    api.request<UserHistoryResponse>(`/api/users/${id}/history/?limit=${limit}`),
-
-  deleteUser: (id: number): Promise<void> =>
-    api.request<void>(`/api/users/${id}/`, {
-      method: 'DELETE'
-    })
+    api.request<UserHistoryResponse>(`/api/users/${id}/history/?limit=${limit}`)
 };
