@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
 import { Table } from '../ui/Table';
+import { Pagination } from '../ui/Pagination';
 import { api } from '../../lib/api';
 import { UnitOfMeasure, UnitOfMeasureFilterParams } from '../../types';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -22,12 +23,13 @@ import {
   AlertCircleIcon,
   ArrowUpDownIcon,
   ShieldCheckIcon,
-  LayersIcon,
   XIcon
 } from 'lucide-react';
 
 export function UnitsOfMeasureTab() {
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -56,19 +58,34 @@ export function UnitsOfMeasureTab() {
   };
 
   const fetchUnits = useCallback(
-    async (isRefresh = false) => {
+    async (page = 1, isRefresh = false) => {
       if (isRefresh) setIsRefreshing(true);
       else setIsLoading(true);
       setApiError(null);
 
       try {
-        const params: UnitOfMeasureFilterParams = {};
+        const params: UnitOfMeasureFilterParams = {
+          ordering: ordering || 'name'
+        };
         if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
-        if (ordering) params.ordering = ordering;
+        if (page > 1) params.page = page;
 
-        const data = await api.getUnits(params);
-        setUnits(Array.isArray(data) ? data : []);
+        const res = await api.getUnitsPaginated(params);
+        if (res && Array.isArray(res.results)) {
+          setUnits(res.results);
+          setTotalCount(res.count ?? res.results.length);
+        } else if (Array.isArray(res)) {
+          setUnits(res);
+          setTotalCount((res as UnitOfMeasure[]).length);
+        } else {
+          setUnits([]);
+          setTotalCount(0);
+        }
       } catch (err: any) {
+        if (page > 1 && err?.status === 404) {
+          setCurrentPage(1);
+          return;
+        }
         setApiError(err.message || 'Failed to load units of measure. Please check permissions.');
       } finally {
         setIsLoading(false);
@@ -79,11 +96,12 @@ export function UnitsOfMeasureTab() {
   );
 
   useEffect(() => {
-    fetchUnits();
-  }, [fetchUnits]);
+    setCurrentPage(1);
+    fetchUnits(1);
+  }, [debouncedSearch, ordering]);
 
   const handleRefresh = () => {
-    fetchUnits(true);
+    fetchUnits(currentPage, true);
   };
 
   const handleCreateSuccess = (unit: UnitOfMeasure, isEdit: boolean) => {
@@ -92,16 +110,16 @@ export function UnitsOfMeasureTab() {
         ? `Unit of measure '${unit.name}' updated successfully.`
         : `Unit of measure '${unit.name}' (${unit.abbreviation}) created successfully.`
     );
-    fetchUnits();
+    fetchUnits(currentPage);
   };
 
   const handleDeleteSuccess = (_unitId: number, unitName: string) => {
     showToast(`Unit of measure '${unitName}' deleted successfully.`);
-    fetchUnits();
+    fetchUnits(currentPage);
   };
 
   // Metrics
-  const totalUnits = units.length;
+  const totalUnits = totalCount > 0 ? totalCount : units.length;
   const inUseUnits = units.filter((u) => (u.product_count || 0) > 0).length;
   const totalProducts = units.reduce((acc, u) => acc + (u.product_count || 0), 0);
 
@@ -147,11 +165,10 @@ export function UnitsOfMeasureTab() {
               setUnitForProducts(u);
               setIsProductsOpen(true);
             }}
-            className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
-              count > 0
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
-            }`}
+            className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${count > 0
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+              : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
+              }`}
             title="Click to view assigned products">
             <PackageIcon className="h-3.5 w-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
             <span>
@@ -246,9 +263,9 @@ export function UnitsOfMeasureTab() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-slate-900">Units of Measure</h2>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+            {/* <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
               Admin Only
-            </span>
+            </span> */}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Define product packaging and dispensing metrics (Tablet, Capsule, Bottle, Vial, etc.).
@@ -371,16 +388,31 @@ export function UnitsOfMeasureTab() {
             <p className="text-xs">Loading units of measure...</p>
           </div>
         ) : (
-          <Table
-            data={units}
-            columns={columns}
-            keyField="id"
-            emptyMessage={
-              searchQuery
-                ? `No units found matching "${searchQuery}".`
-                : 'No units of measure registered yet. Click "New Unit" to create one.'
-            }
-          />
+          <>
+            <Table
+              data={units}
+              columns={columns}
+              keyField="id"
+              emptyMessage={
+                searchQuery
+                  ? `No units found matching "${searchQuery}".`
+                  : 'No units of measure registered yet. Click "New Unit" to create one.'
+              }
+            />
+            {totalCount > 20 && (
+              <div className="border-t border-slate-200 bg-white px-4 py-2">
+                <Pagination
+                  currentPage={currentPage}
+                  totalCount={totalCount}
+                  pageSize={20}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    fetchUnits(page);
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 

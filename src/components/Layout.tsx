@@ -85,33 +85,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
     },
     ...(isAdmin
       ? [
-          {
-            label: 'Sales History',
-            path: '/sales',
-            icon: HistoryIcon
-          },
-          {
-            label: 'Stock Movements',
-            path: '/stock',
-            icon: BoxesIcon
-          },
-          {
-            label: 'Suppliers',
-            path: '/suppliers',
-            icon: Building2Icon,
-            badge: alertCount > 0 ? alertCount : undefined
-          },
-          {
-            label: 'Units of Measure',
-            path: '/units',
-            icon: ScaleIcon
-          },
-          {
-            label: 'User Management',
-            path: '/users',
-            icon: ShieldCheckIcon
-          }
-        ]
+        {
+          label: 'Sales History',
+          path: '/sales',
+          icon: HistoryIcon
+        },
+        {
+          label: 'Stock Movements',
+          path: '/stock',
+          icon: BoxesIcon
+        },
+        {
+          label: 'Suppliers',
+          path: '/suppliers',
+          icon: Building2Icon,
+          badge: alertCount > 0 ? alertCount : undefined
+        },
+        // {
+        //   label: 'Units of Measure',
+        //   path: '/units',
+        //   icon: ScaleIcon
+        // },
+        {
+          label: 'User Management',
+          path: '/users',
+          icon: ShieldCheckIcon
+        }
+      ]
       : [])
   ];
 
@@ -142,11 +142,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="px-6 py-2.5 bg-slate-950/60 border-b border-slate-850 flex items-center justify-between">
             <span className="text-[11px] font-medium text-slate-400">Access Level</span>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                isAdmin
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-              }`}>
+              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${isAdmin
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                }`}>
               {roleDisplay}
             </span>
           </div>
@@ -159,11 +158,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                  }`}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
                   onClick={() => setIsMobileMenuOpen(false)}>
                   <div className="flex items-center min-w-0">
                     <item.icon className="h-5 w-5 mr-3 flex-shrink-0" />
@@ -194,11 +192,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setIsUpdateModalOpen(true)}
-              className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
-                hasUpdateAvailable
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-500 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
+              className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${hasUpdateAvailable
+                ? 'bg-emerald-600 text-white hover:bg-emerald-500 font-semibold shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
               title="Check for Mediflex System Updates">
               <DownloadCloudIcon className="h-3.5 w-3.5" />
               <span>{hasUpdateAvailable ? 'Update Now' : 'Check Update'}</span>
@@ -210,11 +207,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center min-w-0">
                 <div
-                  className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                    isAdmin
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
-                      : 'bg-blue-950 text-blue-300 border border-blue-700/50'
-                  }`}>
+                  className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${isAdmin
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
+                    : 'bg-blue-950 text-blue-300 border border-blue-700/50'
+                    }`}>
                   {displayName.substring(0, 2).toUpperCase()}
                 </div>
                 <div className="ml-3 min-w-0">
@@ -251,11 +247,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <PillIcon className="h-6 w-6 text-emerald-600 mr-2" />
             <span className="font-bold text-slate-900">Mediflex</span>
             <span
-              className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                isAdmin
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
+              className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${isAdmin
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-blue-100 text-blue-800'
+                }`}>
               {roleDisplay}
             </span>
           </div>

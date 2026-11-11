@@ -11,7 +11,6 @@ import {
   ScaleIcon,
   Building2Icon,
   AlertCircleIcon,
-  InfoIcon,
   SparklesIcon
 } from 'lucide-react';
 
@@ -59,7 +58,9 @@ export function CreateEditProductModal({
         api.getSuppliers().catch(() => [] as Supplier[])
       ])
         .then(([unitsData, suppliersData]) => {
-          const loadedUnits = Array.isArray(unitsData) ? unitsData : [];
+          const loadedUnits = Array.isArray(unitsData)
+            ? unitsData
+            : (unitsData as any)?.results || [];
           setUnits(loadedUnits);
           const resolvedSuppliers = Array.isArray(suppliersData)
             ? suppliersData

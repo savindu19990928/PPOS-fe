@@ -312,6 +312,7 @@ export interface UpdateUnitPayload {
 }
 
 export interface UnitOfMeasureFilterParams {
+  page?: number;
   search?: string;
   ordering?: 'name' | '-name' | 'abbreviation' | '-abbreviation' | 'id' | string;
 }

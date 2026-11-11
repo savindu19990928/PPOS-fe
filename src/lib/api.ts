@@ -363,12 +363,27 @@ export const api = {
   },
 
   // Units of Measure (Admin Only Management & Dropdown Usage)
-  getUnits: (params?: UnitOfMeasureFilterParams): Promise<UnitOfMeasure[]> => {
+  getUnits: async (params?: UnitOfMeasureFilterParams): Promise<UnitOfMeasure[]> => {
     const q = new URLSearchParams();
-    if (params?.search) q.set('search', params.search);
-    if (params?.ordering) q.set('ordering', params.ordering);
-    const qs = q.toString() ? `?${q.toString()}` : '';
-    return api.request<UnitOfMeasure[]>(`/api/units/${qs}`);
+    if (params?.search && params.search.trim()) q.set('search', params.search.trim());
+    q.set('ordering', params?.ordering || 'name');
+    if (params?.page) q.set('page', String(params.page));
+    const qs = `?${q.toString()}`;
+    const res = await api.request<any>(`/api/units/${qs}`);
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.results)) return res.results;
+    return [];
+  },
+
+  getUnitsPaginated: (
+    params?: UnitOfMeasureFilterParams
+  ): Promise<PaginatedResponse<UnitOfMeasure>> => {
+    const q = new URLSearchParams();
+    if (params?.search && params.search.trim()) q.set('search', params.search.trim());
+    q.set('ordering', params?.ordering || 'name');
+    if (params?.page) q.set('page', String(params.page));
+    const qs = `?${q.toString()}`;
+    return api.request<PaginatedResponse<UnitOfMeasure>>(`/api/units/${qs}`);
   },
 
   getUnitDetails: (id: number): Promise<UnitOfMeasure> =>
@@ -397,8 +412,12 @@ export const api = {
       method: 'DELETE'
     }),
 
-  getUnitProducts: (id: number): Promise<Product[]> =>
-    api.request<Product[]>(`/api/units/${id}/products/`),
+  getUnitProducts: async (id: number): Promise<Product[]> => {
+    const res = await api.request<any>(`/api/units/${id}/products/`);
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.results)) return res.results;
+    return [];
+  },
 
   // Denominations
   getDenominations: (): Promise<Denomination[]> => api.request<Denomination[]>('/api/denominations/'),
@@ -626,6 +645,6 @@ export const api = {
       method: 'POST'
     }),
 
-  getUserHistory: (id: number, limit: number = 50): Promise<UserHistoryResponse> =>
+  getUserHistory: (id: number, limit = 50): Promise<UserHistoryResponse> =>
     api.request<UserHistoryResponse>(`/api/users/${id}/history/?limit=${limit}`)
 };

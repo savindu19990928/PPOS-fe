@@ -211,14 +211,6 @@ export function UpdateModal({ isOpen, onClose, initialStatus }: UpdateModalProps
                 </div>
               </div>
             )}
-
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
-              <p className="font-semibold text-slate-800">Seamless POS Update:</p>
-              <p className="mt-0.5">
-                Clicking Download will fetch the NSIS installer package in the background without interrupting your current POS transactions.
-              </p>
-            </div>
-
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={onClose}>
                 Later

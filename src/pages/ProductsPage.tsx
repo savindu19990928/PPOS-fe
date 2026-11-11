@@ -642,9 +642,9 @@ export function ProductsPage() {
                 }`}>
               <ScaleIcon className="h-4 w-4" />
               <span>Units of Measure</span>
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded uppercase bg-emerald-500/20 text-emerald-900 border border-emerald-500/30">
+              {/* <span className="text-[9px] font-bold px-1.5 py-0.2 rounded uppercase bg-emerald-500/20 text-emerald-900 border border-emerald-500/30">
                 Admin
-              </span>
+              </span> */}
             </button>
           </div>
         )}

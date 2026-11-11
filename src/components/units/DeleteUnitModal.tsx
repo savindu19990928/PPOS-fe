@@ -2,15 +2,12 @@ import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
-import { UnitOfMeasure, Product } from '../../types';
+import { UnitOfMeasure } from '../../types';
 import {
   AlertTriangleIcon,
   AlertCircleIcon,
   ShieldAlertIcon,
-  PackageIcon,
-  ExternalLinkIcon,
-  InfoIcon,
-  CheckCircle2Icon
+  PackageIcon
 } from 'lucide-react';
 
 interface DeleteUnitModalProps {

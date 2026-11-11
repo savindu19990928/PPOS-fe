@@ -9,10 +9,6 @@ import {
   SearchIcon,
   Loader2,
   AlertCircleIcon,
-  TagIcon,
-  DollarSignIcon,
-  BoxesIcon,
-  Building2Icon,
   ExternalLinkIcon
 } from 'lucide-react';
 
@@ -40,8 +36,8 @@ export function UnitProductsModal({
       setError(null);
       setSearch('');
       api.getUnitProducts(unit.id)
-        .then((data) => {
-          setProducts(Array.isArray(data) ? data : []);
+        .then((data: any) => {
+          setProducts(Array.isArray(data) ? data : data?.results || []);
         })
         .catch((err: any) => {
           setError(err.message || 'Failed to load products for this unit.');
